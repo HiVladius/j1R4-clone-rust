@@ -1,16 +1,15 @@
-use serde::{Serialize, Deserialize};
-use validator::Validate;
-use mongodb::bson::oid::ObjectId; // Solo importamos ObjectId
 use chrono::{DateTime, Utc};
-
+use mongodb::bson::oid::ObjectId; // Solo importamos ObjectId
+use serde::{Deserialize, Serialize};
+use validator::Validate;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct User {
-    #[serde(rename = "_id" )]
-    pub id: Option<ObjectId>, // Quitamos #[serde(with = ...)]
+    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
+    pub id: Option<ObjectId>,
     pub username: String,
     pub email: String,
-    #[serde(skip_serializing)]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub password_hash: String,
     #[serde(with = "bson::serde_helpers::chrono_datetime_as_bson_datetime")]
     pub created_at: DateTime<Utc>,
@@ -20,13 +19,15 @@ pub struct User {
 
 #[derive(Deserialize, Validate, Debug)]
 pub struct RegisterUserSchema {
-    #[validate(length(min = 5, message = "El nombre de usuario debe tener al menos 5 caracteres."))]
+    #[validate(length(
+        min = 5,
+        message = "El nombre de usuario debe tener al menos 5 caracteres."
+    ))]
     pub username: String,
     #[validate(email(message = "El correo electrónico no es válido."))]
     pub email: String,
     #[validate(length(min = 8, message = "La contraseña debe tener al menos 8 caracteres."))]
     pub password: String,
-
 }
 
 #[derive(Deserialize, Validate, Debug)]
@@ -55,6 +56,6 @@ impl From<User> for UserData {
 
 #[derive(Serialize, Debug)]
 pub struct LoginResponse {
-    pub token: String, 
+    pub token: String,
     pub user: UserData,
 }

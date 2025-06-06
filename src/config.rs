@@ -16,7 +16,7 @@ impl Config {
             database_name: env::var("DATABASE_NAME")?,
             jwt_secret: env::var("JWT_SECRET")?,
             server_address: env::var("SERVER_ADDRESS")
-                .unwrap_or_else(|_| "127.0.0:1:8000".to_string()),
+                .unwrap_or_else(|_| "127.0.0.1:8000".to_string()),
         })
     }
 }
