@@ -1,8 +1,8 @@
 // src/errors.rs
 use axum::{
+    Json,
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
 };
 use serde_json::json;
 use thiserror::Error;
@@ -49,28 +49,46 @@ impl IntoResponse for AppError {
         let (status, error_message) = match self {
             AppError::DatabaseError(msg) | AppError::DatabaseConnectionError(msg) => {
                 tracing::error!("Error de base de datos: {}", msg);
-                (StatusCode::INTERNAL_SERVER_ERROR, "Error interno del servidor (DB)".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Error interno del servidor (DB)".to_string(),
+                )
             }
             AppError::ConfigError(e) => {
                 tracing::error!("Error de configuración: {}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, "Error de configuración del servidor".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Error de configuración del servidor".to_string(),
+                )
             }
             AppError::LogDirectiveParseError(e) => {
                 tracing::error!("Error de parsing de directiva de log: {}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, "Error de logging del servidor".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Error de logging del servidor".to_string(),
+                )
             }
             AppError::TcpListenerError(e) => {
                 tracing::error!("Error de listener TCP: {}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, "Error al iniciar el servidor".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Error al iniciar el servidor".to_string(),
+                )
             }
             AppError::ValidationError(msg) => (StatusCode::BAD_REQUEST, msg),
             AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             AppError::AuthError(msg) => (StatusCode::UNAUTHORIZED, msg), // O BAD_REQUEST dependiendo del contexto
             AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg),
-            AppError::InternalServerError => (StatusCode::INTERNAL_SERVER_ERROR, "Error interno del servidor".to_string()),
+            AppError::InternalServerError => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Error interno del servidor".to_string(),
+            ),
             AppError::JwtError(e) => {
                 tracing::error!("Error de JWT: {}", e);
-                (StatusCode::UNAUTHORIZED, "Token inválido o expirado".to_string())
+                (
+                    StatusCode::UNAUTHORIZED,
+                    "Token inválido o expirado".to_string(),
+                )
             }
         };
 
