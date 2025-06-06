@@ -1,0 +1,61 @@
+name: "Jira Clone Backend - Rust"
+description: "Workspace para el desarrollo del backend del clon de Jira con Rust"
+
+folders:
+  - name: "Backend"
+    path: "../../"
+  - name: "API Documentation"
+    path: "../../docs"
+  - name: "Database"
+    path: "../../database"
+  - name: "Tests"
+    path: "../../tests"
+
+settings:
+  "rust-analyzer.cargo.features": "all"
+  "rust-analyzer.checkOnSave.command": "clippy"
+  "editor.formatOnSave": true
+  "editor.codeActionsOnSave": {
+    "source.fixAll": true
+  }
+  "files.exclude": {
+    "**/target": true,
+    "**/.git": true,
+    "**/Cargo.lock": false
+  }
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer",
+    "editor.formatOnSave": true
+  }
+
+extensions:
+  recommendations:
+    - "rust-lang.rust-analyzer"
+    - "vadimcn.vscode-lldb"
+    - "serayuzgur.crates"
+    - "humao.rest-client"
+    - "ms-vscode.vscode-docker"
+    - "tamasfe.even-better-toml"
+    - "fill-labs.dependi"
+
+tasks:
+  - label: "Build Project"
+    type: "shell"
+    command: "cargo build"
+    group: "build"
+  - label: "Run Development Server"
+    type: "shell"
+    command: "cargo run"
+    group: "build"
+  - label: "Run Tests"
+    type: "shell"
+    command: "cargo test"
+    group: "test"
+  - label: "Check Code"
+    type: "shell"
+    command: "cargo check"
+    group: "build"
+  - label: "Clippy Lint"
+    type: "shell"
+    command: "cargo clippy"
+    group: "build"
