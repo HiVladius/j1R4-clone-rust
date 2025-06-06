@@ -1,8 +1,8 @@
 use axum::{
-    extract::State,
+    
     middleware,
     routing::{get, post},
-    Router, Extension,
+    Router,
 };
 use dotenvy::dotenv;
 use jira_clone_backend::config::Config;
@@ -47,8 +47,7 @@ async fn main() -> Result<(), AppError> {
     // Define routes that require authentication
     let protected_routes = Router::new()
         .route("/me", get(get_me_handler))
-        .layer(auth_middleware)
-        .with_state(app_state.clone());
+        .layer(auth_middleware);
 
     let auth_routes = Router::new()
         .route("/register", post(register_handler))

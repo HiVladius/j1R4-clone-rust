@@ -1,9 +1,12 @@
 use axum::{
-    debug_handler,
     extract::{Extension, State},
     http::StatusCode,
     Json,
+    // debug_handler
+
 };
+
+
 use std::sync::Arc;
 // use validator::Validate; // //!optional, si necesitas validación de datos
 use crate::{
@@ -31,9 +34,8 @@ pub async fn login_handler(
     let login_response = auth_service.login_user(payload).await?;
     Ok(Json(login_response))
 }
-#[axum::debug_handler]
+// #[debug_handler]
 pub async fn get_me_handler(
-    State(_app_state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
 ) -> Result<Json<AuthenticatedUser>, AppError> {
     // We can use _app_state here if needed
