@@ -21,3 +21,7 @@ pub mod models {
 pub mod handlers {
     pub mod auth_handler;
 }
+
+pub mod middleware {
+    pub mod auth_middleware;
+}

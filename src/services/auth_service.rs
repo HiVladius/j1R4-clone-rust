@@ -33,7 +33,7 @@ impl AuthService {
         // Verificar si ya existe un usuario con el mismo email o username
         let existing_user = self
             .user_collection()
-            .find_one(doc! { 
+            .find_one(doc! {
                 "$or": [
                     { "email": &schema.email },
                     { "username": &schema.username }
@@ -99,7 +99,7 @@ impl AuthService {
                 "Usuario sin contraseña configurada".to_string(),
             ));
         }
-            // //!Verificar la contraseña y generar el token JWT
+        // //!Verificar la contraseña y generar el token JWT
         if !password_utils::verify_password(&user.password_hash, &schema.password)? {
             return Err(AppError::ValidationError(
                 "Contraseña incorrecta".to_string(),

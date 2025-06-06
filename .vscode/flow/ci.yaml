@@ -1,0 +1,39 @@
+name: Integration Cargo
+onfiguration
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+      - feature/*
+  schedule:
+    - cron: '0 0 * * 0'  # Every Sunday at midnight UTC
+jobs:
+  integration_cargo:
+    name: Integration Cargo
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Rust
+        uses: actions/setup-rust@v1
+        with:
+          rust-version: 'stable'
+
+      - name: Install dependencies
+        run: cargo fetch
+
+      - name: Run integration tests
+        run: cargo test --all-features -- --test-threads=1
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: cargo-test-results

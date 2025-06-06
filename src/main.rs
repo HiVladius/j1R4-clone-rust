@@ -1,12 +1,16 @@
 use axum::{
-    Router,
+    extract::State,
+    middleware,
     routing::{get, post},
+    Router, Extension,
 };
 use dotenvy::dotenv;
 use jira_clone_backend::config::Config;
 use jira_clone_backend::db::DatabaseState;
 use jira_clone_backend::errors::AppError;
+use jira_clone_backend::handlers::auth_handler::get_me_handler;
 use jira_clone_backend::handlers::auth_handler::{login_handler, register_handler};
+use jira_clone_backend::middleware::auth_middleware::auth_guard;
 use jira_clone_backend::state::AppState;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::net::TcpListener;
@@ -32,7 +36,19 @@ async fn main() -> Result<(), AppError> {
     let db_state = Arc::new(db);
 
     // Crear el estado compartido de la aplicación
-    let app_state = Arc::new(AppState::new(db_state, config));
+    let app_state = Arc::new(AppState::new(db_state.clone(), config.clone()));
+
+    // Define a middleware layer for auth_guard using the app_state
+    let auth_middleware = middleware::from_fn_with_state(
+        app_state.clone(),
+        auth_guard
+    );
+
+    // Define routes that require authentication
+    let protected_routes = Router::new()
+        .route("/me", get(get_me_handler))
+        .layer(auth_middleware)
+        .with_state(app_state.clone());
 
     let auth_routes = Router::new()
         .route("/register", post(register_handler))
@@ -41,6 +57,7 @@ async fn main() -> Result<(), AppError> {
     let app = Router::new()
         .route("/", get(root_handler))
         .nest("/api/auth", auth_routes)
+        .nest("/api", protected_routes)
         .with_state(app_state);
 
     let add_str = &server_address;
