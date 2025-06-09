@@ -1,19 +1,14 @@
 use axum::{
+    body::Body,
     extract::{Request, State},
     http::header,
     middleware::Next,
     response::Response,
-    body::Body,
 };
-use std::sync::Arc;
 use mongodb::bson::{doc, oid::ObjectId};
+use std::sync::Arc;
 
-use crate::{
-    errors::AppError, 
-    models::user_model::User, 
-    utils::jwt_utils,
-    state::AppState,
-};
+use crate::{errors::AppError, models::user_model::User, state::AppState, utils::jwt_utils};
 
 // Struc que guardará la información del usiario autenticado
 #[derive(Debug, Clone, serde::Serialize)]

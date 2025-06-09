@@ -1,11 +1,9 @@
 use axum::{
+    Json, debug_handler,
     extract::{Extension, State},
     http::StatusCode,
-    Json,
     response::{IntoResponse, Response},
-    debug_handler
 };
-
 
 use std::sync::Arc;
 // use validator::Validate; // //!optional, si necesitas validación de datos
@@ -15,7 +13,6 @@ use crate::{
     models::user_model::{LoginResponse, LoginUserSchema, RegisterUserSchema, UserData},
     services::auth_service::AuthService,
     state::AppState,
-    
 };
 
 #[derive(Debug)]
@@ -26,14 +23,15 @@ pub enum AuthHandlerError {
     Unauthorized,
 }
 
-
 impl IntoResponse for AuthHandlerError {
-    fn into_response(self) ->  Response {
+    fn into_response(self) -> Response {
         let (status, error_message) = match self {
             AuthHandlerError::ServiceError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
             AuthHandlerError::ValidationError(msg) => (StatusCode::BAD_REQUEST, msg),
             AuthHandlerError::NotFound => (StatusCode::NOT_FOUND, "Resource not found".to_string()),
-            AuthHandlerError::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized".to_string()),
+            AuthHandlerError::Unauthorized => {
+                (StatusCode::UNAUTHORIZED, "Unauthorized".to_string())
+            }
         };
 
         let body = Json(serde_json::json!({

@@ -7,21 +7,34 @@ pub mod state;
 pub mod utils {
     pub mod jwt_utils;
     pub mod password_utils;
+    pub mod validation;
 }
 
 pub mod services {
     pub mod auth_service;
+    pub mod project_service;
 }
 
 //Modelos para la base de datos
 pub mod models {
+    pub mod project_models;
     pub mod user_model;
 }
 
 pub mod handlers {
     pub mod auth_handler;
+    pub mod project_handler;
 }
 
 pub mod middleware {
     pub mod auth_middleware;
+}
+
+#[cfg(test)]
+pub mod test {
+    pub mod project_integration_test;
+}
+
+pub mod router {
+    pub mod router;
 }
