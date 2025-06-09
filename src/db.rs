@@ -10,7 +10,7 @@ pub struct DatabaseState {
 
 impl DatabaseState {
     pub async fn init(db_url: &str, db_name: &str) -> Result<Self, AppError> {
-        tracing::info!("Conectando a la base de datos MongoDB en {}...", db_url);
+        // tracing::info!("Conectando a la base de datos MongoDB en {}...", db_url);
         let mut client_options = ClientOptions::parse(db_url).await.map_err(|e| {
             tracing::error!("Error al parsear la URL de MongoDB: {}", e);
             AppError::DatabaseError(e.to_string())
