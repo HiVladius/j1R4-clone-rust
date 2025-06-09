@@ -12,3 +12,4 @@ impl AppState {
         Self { db, config }
     }
 }
+

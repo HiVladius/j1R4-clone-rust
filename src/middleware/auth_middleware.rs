@@ -16,7 +16,7 @@ use crate::{
 };
 
 // Struc que guardará la información del usiario autenticado
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct AuthenticatedUser {
     pub id: ObjectId,
     pub username: String,
