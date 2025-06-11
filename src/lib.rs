@@ -32,9 +32,14 @@ pub mod middleware {
 
 #[cfg(test)]
 pub mod test {
+    pub mod project_edit_test;
     pub mod project_integration_test;
 }
 
 pub mod router {
     pub mod router;
+}
+
+pub mod helpers {
+    pub mod helper_setup_app;
 }

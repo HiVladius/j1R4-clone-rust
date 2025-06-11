@@ -997,6 +997,7 @@ dependencies = [
  "chrono",
  "dotenvy",
  "futures",
+ "hyper",
  "jsonwebtoken",
  "mongodb",
  "once_cell",

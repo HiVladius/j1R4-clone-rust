@@ -41,3 +41,13 @@ pub struct CreateProjectSchema {
 
     pub description: Option<String>,
 }
+
+#[derive(Deserialize, Validate, Debug, Default)]
+pub struct UpdateProjectSchema {
+    #[validate(length(
+        min = 3,
+        message = "El nombre del proyecto debe de tener al menos 3 caracteres. "
+    ))]
+    pub name: Option<String>,
+    pub description: Option<String>,
+}
