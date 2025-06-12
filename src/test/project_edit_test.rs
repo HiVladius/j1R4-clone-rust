@@ -1,19 +1,19 @@
 use crate::helpers::helper_setup_app::{get_auth_token, setup_app};
 
+use crate::models::project_models::Project;
+use axum::body::to_bytes;
 use axum::{
     body::Body,
     http::{Request, StatusCode, header},
 };
-use uuid::Uuid;
 use bson::uuid;
-use tower::ServiceExt;
-use crate::models::project_models::Project;
 use serde_json::json;
-use axum::body::to_bytes;
+use tower::ServiceExt;
+use uuid::Uuid;
 
 #[tokio::test]
 async fn test_project_update_and_delete_permissions() {
-    // --- 1. SETUP ---
+    // //* --- 1. SETUP ---
     // Creamos dos usuarios diferentes para probar los permisos cruzados.
     let app = setup_app().await;
 
@@ -23,7 +23,7 @@ async fn test_project_update_and_delete_permissions() {
     let token_a = get_auth_token(&app, "user_a", &user_a_email).await;
     let token_b = get_auth_token(&app, "user_b", &user_b_email).await;
 
-    // --- 2. CREACIÓN ---
+    // //* --- 2. CREACIÓN ---
     // El usuario A crea un proyecto.
     let create_payload = json!({ "name": "Proyecto de A", "key": "PROJA" });
     let create_response = app
@@ -40,15 +40,15 @@ async fn test_project_update_and_delete_permissions() {
         .await
         .unwrap();
     let project: Project = serde_json::from_slice(
-            &to_bytes(create_response.into_body(), usize::MAX)
+        &to_bytes(create_response.into_body(), usize::MAX)
             .await
             .unwrap(),
     )
     .unwrap();
     let project_id = project.id.unwrap().to_hex();
 
-    // --- 3. PRUEBAS DE UPDATE ---
-    // El usuario B (no propietario) intenta actualizar -> DEBE FALLAR (401 Unauthorized)
+    //  //* --- 3. PRUEBAS DE UPDATE ---
+    // //! El usuario B (no propietario) intenta actualizar -> DEBE FALLAR (401 Unauthorized)
     let update_payload = json!({ "name": "Proyecto Hackeado" });
     let unauthorized_update_response = app
         .clone()
@@ -68,7 +68,7 @@ async fn test_project_update_and_delete_permissions() {
         StatusCode::UNAUTHORIZED
     );
 
-    // El usuario A (propietario) actualiza -> DEBE FUNCIONAR
+    // //!El usuario A (propietario) actualiza -> DEBE FUNCIONAR
     let authorized_update_response = app
         .clone()
         .oneshot(
@@ -91,7 +91,7 @@ async fn test_project_update_and_delete_permissions() {
     .unwrap();
     assert_eq!(updated_project.name, "Proyecto Hackeado");
 
-    // --- 4. PRUEBAS DE DELETE ---
+    // //* --- 4. PRUEBAS DE DELETE ---
     // El usuario B intenta eliminar -> DEBE FALLAR (401 Unauthorized)
     let unauthorized_delete_response = app
         .clone()
@@ -110,7 +110,7 @@ async fn test_project_update_and_delete_permissions() {
         StatusCode::UNAUTHORIZED
     );
 
-    // El usuario A elimina -> DEBE FUNCIONAR
+    // //!  El usuario A elimina -> DEBE FUNCIONAR
     let authorized_delete_response = app
         .clone()
         .oneshot(
@@ -125,8 +125,8 @@ async fn test_project_update_and_delete_permissions() {
         .unwrap();
     assert_eq!(authorized_delete_response.status(), StatusCode::NO_CONTENT);
 
-    // --- 5. VERIFICACIÓN FINAL ---
-    // El proyecto ya no debería existir en la lista del usuario A
+    // //* --- 5. VERIFICACIÓN FINAL ---
+    // //!  El proyecto ya no debería existir en la lista del usuario A
     let final_get_response = app
         .clone()
         .oneshot(

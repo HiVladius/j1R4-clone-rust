@@ -5,6 +5,7 @@ use crate::{
             create_project_handler, delete_project_handler, get_project_handler,
             update_project_handler,
         },
+        task_handler::create_task_handler,
     },
     middleware::auth_middleware::auth_guard,
     state::AppState,
@@ -24,6 +25,7 @@ pub fn get_app(app_state: Arc<AppState>) -> Router {
         .route("/projects", get(get_project_handler))
         .route("/projects/{project_id}", patch(update_project_handler))
         .route("/projects/{project_id}", delete(delete_project_handler))
+        .route("/projects/{project_id}/tasks", post(create_task_handler))
         .layer(auth_middleware);
 
     let auth_routes = Router::new()
