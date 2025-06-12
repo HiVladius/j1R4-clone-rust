@@ -1,14 +1,18 @@
 use crate::{
     handlers::{
         auth_handler::{get_me_handler, login_handler, register_handler},
-        project_handler::{create_project_handler, get_project_handler},
+        project_handler::{
+            create_project_handler, delete_project_handler, get_project_handler,
+            update_project_handler,
+        },
+        task_handler::create_task_handler,
     },
     middleware::auth_middleware::auth_guard,
     state::AppState,
 };
 use axum::{
     Router, middleware,
-    routing::{get, post},
+    routing::{delete, get, patch, post},
 };
 use std::sync::Arc;
 
@@ -19,6 +23,9 @@ pub fn get_app(app_state: Arc<AppState>) -> Router {
         .route("/me", get(get_me_handler))
         .route("/projects", post(create_project_handler))
         .route("/projects", get(get_project_handler))
+        .route("/projects/{project_id}", patch(update_project_handler))
+        .route("/projects/{project_id}", delete(delete_project_handler))
+        .route("/projects/{project_id}/tasks", post(create_task_handler))
         .layer(auth_middleware);
 
     let auth_routes = Router::new()

@@ -37,7 +37,7 @@ pub struct LoginUserSchema {
     pub password: String,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct UserData {
     pub id: String,
     pub username: String,
@@ -56,6 +56,12 @@ impl From<User> for UserData {
 
 #[derive(Serialize, Debug)]
 pub struct LoginResponse {
+    pub token: String,
+    pub user: UserData,
+}
+
+#[derive(Serialize, Debug, Deserialize)]
+pub struct UserLoginResponseTest {
     pub token: String,
     pub user: UserData,
 }

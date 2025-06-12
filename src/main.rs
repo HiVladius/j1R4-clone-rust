@@ -32,11 +32,11 @@ async fn main() -> Result<(), AppError> {
     let app_state = Arc::new(AppState::new(db_state.clone(), config.clone()));
 
     // Define a middleware layer for auth_guard using the app_state
-   let app = get_app(app_state);
+    let app = get_app(app_state);
 
-   // Parse the server address and bind the listener
+    // Parse the server address and bind the listener
     tracing::info!("Escuchando en: {}", server_address);
-   let addr: SocketAddr = server_address
+    let addr: SocketAddr = server_address
         .parse()
         .expect("No se pudo parsear la direccion del servidor");
 
@@ -47,5 +47,3 @@ async fn main() -> Result<(), AppError> {
 
     Ok(())
 }
-
-

@@ -12,7 +12,7 @@ use validator::Validate;
 use crate::{
     db::DatabaseState,
     errors::AppError,
-    models::project_models::{CreateProjectSchema, Project},
+    models::project_models::{CreateProjectSchema, Project, UpdateProjectSchema},
 };
 
 pub struct ProjectService {
@@ -92,5 +92,95 @@ impl ProjectService {
         })?;
 
         Ok(projects)
+    }
+    pub async fn update_project(
+        &self,
+        project_id: ObjectId,
+        owner_id: ObjectId,
+        schema: UpdateProjectSchema,
+    ) -> Result<Project, AppError> {
+        // 1. Validar el esquema de entrada
+        schema
+            .validate()
+            .map_err(|e| AppError::ValidationError(e.to_string()))?;
+
+        // 2. Buscar el proyecto para asegurarse de que existe y pertenece al usuario
+        let project = self
+            .projects_collection()
+            .find_one(doc! { "_id": project_id })
+            .await
+            .map_err(|_| AppError::InternalServerError)?
+            .ok_or_else(|| AppError::NotFound("Proyecto no encontrado.".to_string()))?;
+
+        // 3. ¡Verificación de permisos!
+        if project.owner_id != owner_id {
+            return Err(AppError::Unauthorized(
+                "No tienes permiso para modificar este proyecto.".to_string(),
+            ));
+        }
+
+        // 4. Construir el documento de actualización solo con los campos presentes
+        let mut update_doc = doc! {};
+        if let Some(name) = schema.name {
+            update_doc.insert("name", name);
+        }
+        if let Some(description) = schema.description {
+            update_doc.insert("description", description);
+        }
+
+        // Si no hay nada que actualizar, devolvemos el proyecto tal cual
+        if update_doc.is_empty() {
+            return Ok(project);
+        }
+
+        update_doc.insert("updated_at", Utc::now());
+
+        // 5. Realizar la actualización
+        let update_result = self
+            .projects_collection()
+            .find_one_and_update(doc! { "_id": project_id }, doc! { "$set": update_doc })
+            .with_options(
+                mongodb::options::FindOneAndUpdateOptions::builder()
+                    .return_document(mongodb::options::ReturnDocument::After)
+                    .build(),
+            )
+            .await
+            .map_err(|_| AppError::InternalServerError)?;
+
+        // Devolver el documento actualizado
+        update_result.ok_or_else(|| {
+            AppError::NotFound(
+                "No se pudo encontrar el proyecto después de actualizar.".to_string(),
+            )
+        })
+    }
+
+    pub async fn delete_project(
+        &self,
+        project_id: ObjectId,
+        owner_id: ObjectId,
+    ) -> Result<(), AppError> {
+        // //* 1. Buscar para verificar propiedad
+        let project = self
+            .projects_collection()
+            .find_one(doc! { "_id": project_id })
+            .await
+            .map_err(|_| AppError::InternalServerError)?
+            .ok_or_else(|| AppError::NotFound("Proyecto no encontrado.".to_string()))?;
+
+        // //* 2. ¡Verificación de permisos!
+        if project.owner_id != owner_id {
+            return Err(AppError::Unauthorized(
+                "No tienes permiso para eliminar este proyecto.".to_string(),
+            ));
+        }
+
+        // //* 3. Eliminar el proyecto
+        self.projects_collection()
+            .delete_one(doc! { "_id": project_id })
+            .await
+            .map_err(|_| AppError::InternalServerError)?;
+
+        Ok(())
     }
 }
