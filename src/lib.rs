@@ -38,6 +38,8 @@ pub mod test {
     pub mod project_edit_test;
     pub mod project_integration_test;
     pub mod task_creation_test;
+    pub mod task_read_test;
+    pub mod task_edit_test;
 }
 
 pub mod router {

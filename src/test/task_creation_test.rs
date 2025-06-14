@@ -6,7 +6,10 @@ use bson::uuid;
 
 use crate::{
     helpers::helper_setup_app::{get_auth_token, setup_app},
-    models::{project_models::Project, task_model::{Task, TaskStatus::ToDo}},
+    models::{
+        project_models::Project,
+        task_model::{Task, TaskStatus::ToDo},
+    },
 };
 use serde_json::json;
 use tower::ServiceExt;
@@ -66,18 +69,21 @@ async fn test_task_creation_permissions() {
         .unwrap();
     assert_eq!(unauthorized_reponse.status(), StatusCode::UNAUTHORIZED);
 
-
     // //! 3. PRUEBA DE CREACION AUTORIZADA
     // //? El usuario A crea una tarea en su proyecto -> Debe Satisfactorio 201 CREATED
-    let authorized_reponse = app.clone().oneshot(
-        Request::builder()
-            .method("POST")
-            .uri(format!("/api/projects/{}/tasks", project_id))
-            .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
-            .header(header::CONTENT_TYPE, "application/json")
-            .body(Body::from(task_payload.to_string()))
-            .unwrap(),
-    ).await.unwrap();
+    let authorized_reponse = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/api/projects/{}/tasks", project_id))
+                .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(task_payload.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
     assert_eq!(authorized_reponse.status(), StatusCode::CREATED);
 
     let created_task: Task = serde_json::from_slice(
@@ -90,6 +96,4 @@ async fn test_task_creation_permissions() {
     assert_eq!(created_task.title, "Tarea maliciosa");
     assert_eq!(created_task.project_id.to_hex(), project_id);
     assert_eq!(created_task.status, ToDo);
-
-
 }

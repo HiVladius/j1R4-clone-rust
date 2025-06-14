@@ -46,3 +46,13 @@ pub struct CreateTaskSchema {
     pub priority: Option<TaskPriority>,
     pub assignee_id: Option<String>,
 }
+
+#[derive(Deserialize, Validate, Debug, Default)]
+pub struct UpdateTaskSchema {
+    #[validate(length(min = 3, message = "El titulo debe tener al menos 3 caracteres"))]
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub status: Option<TaskStatus>,
+    pub priority: Option<TaskPriority>,
+    pub assignee_id: Option<Option<String>>,
+}
