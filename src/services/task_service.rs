@@ -14,6 +14,7 @@ use crate::{
         project_models::Project,
         task_model::{CreateTaskSchema, Task, TaskPriority, TaskStatus, UpdateTaskSchema},
     },
+    services::permission_service::PermissionService
 };
 
 use bson::to_bson;
@@ -31,10 +32,12 @@ impl TaskService {
         self.db_state.get_db().collection::<Task>("tasks")
     }
 
-    fn projects_collection(&self) -> Collection<Project> {
+    fn _projects_collection(&self) -> Collection<Project> {
         self.db_state.get_db().collection::<Project>("projects")
     }
 
+    // //* Create a new task
+    // //* Creates a new task in a project, ensuring the user has permission to do so.
     pub async fn create_task(
         &self,
         schema: CreateTaskSchema,
@@ -45,18 +48,10 @@ impl TaskService {
             .validate()
             .map_err(|e| AppError::ValidationError(e.to_string()))?;
 
-        let project = self
-            .projects_collection()
-            .find_one(doc! {"_id": project_id})
-            .await
-            .map_err(|_| AppError::InternalServerError)?
-            .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
-        if project.owner_id != reporter_id {
-            return Err(AppError::Unauthorized(
-                "No tienes permiso para crear tareas en este proyecto".to_string(),
-            ));
-        }
+        PermissionService::new(self.db_state.get_db())
+            .can_access_project(project_id, reporter_id)
+            .await?;
 
         let assignee_id = schema
             .assignee_id
@@ -93,24 +88,20 @@ impl TaskService {
 
         Ok(new_task)
     }
+
+    // //* Get all tasks for a project
+    // //* Retrieves all tasks associated with a project, ensuring the user has permission to access the project.
     pub async fn get_task_for_project(
         &self,
         project_id: ObjectId,
         user_id: ObjectId,
     ) -> Result<Vec<Task>, AppError> {
+        
         // Verificacion de permisos
-        let project = self
-            .projects_collection()
-            .find_one(doc! {"_id": project_id})
-            .await
-            .map_err(|_| AppError::InternalServerError)?
-            .ok_or_else(|| AppError::NotFound("El proyuecto no existe".to_string()))?;
 
-        if project.owner_id != user_id {
-            return Err(AppError::Unauthorized(
-                "No tienes permiso para ver las tareas de este proyecto".to_string(),
-            ));
-        }
+        PermissionService::new(self.db_state.get_db())
+            .can_access_project(project_id, user_id)
+            .await?;
 
         // Buscar todas las tareas que coincidan con el project_id
         let filter = doc! {"project_id": project_id};
@@ -129,6 +120,8 @@ impl TaskService {
         Ok(tasks)
     }
 
+    // //* Get a task by ID
+    // //* Retrieves a task by its ID, ensuring the user has permission to access it.
     pub async fn get_task_by_id(
         &self,
         task_id: ObjectId,
@@ -142,22 +135,15 @@ impl TaskService {
             .map_err(|_| AppError::InternalServerError)?
             .ok_or_else(|| AppError::NotFound("Tarea no encontrada".to_string()))?;
 
-        let project = self
-            .projects_collection()
-            .find_one(doc! {"_id": task.project_id})
-            .await
-            .map_err(|_| AppError::InternalServerError)?
-            .ok_or_else(|| AppError::NotFound("Proyecto no encontrado".to_string()))?;
-
-        if project.owner_id != user_id {
-            return Err(AppError::Unauthorized(
-                "No tienes permiso para ver esta tarea".to_string(),
-            ));
-        }
+            PermissionService::new(self.db_state.get_db())
+            .can_access_project(task.project_id, user_id)
+            .await?;
 
         Ok(task)
     }
 
+    // //* Update a task
+    // //* Updates a task by its ID, ensuring the user has permission to update it.
     pub async fn update_task(
         &self,
         task_id: ObjectId,
@@ -208,6 +194,9 @@ impl TaskService {
         self.get_task_by_id(task_id, user_id).await
     }
 
+
+    // //* Delete a task
+    // //* Deletes a task by its ID, ensuring the user has permission to delete it.
     pub async fn delete_task(&self, task_id: ObjectId, user_id: ObjectId) -> Result<(), AppError> {
 
         // 1.- verificar que la tarea existe y que el usuario tiene permisos

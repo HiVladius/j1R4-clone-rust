@@ -8,9 +8,11 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
-    helpers::helper_setup_app::{get_auth_token, setup_app},
+    helpers::{
+        helper_setup_app::{get_auth_token, setup_app},
+        create_project_for_user::create_project_for_user,
+    },
     models::{
-        project_models::Project,
         task_model::{Task, TaskStatus},
     },
 };
@@ -106,25 +108,4 @@ async fn test_task_update_and_delete_flow() {
     assert_eq!(get_delete_task.status(), StatusCode::NOT_FOUND);
 
 
-    async fn create_project_for_user(app: &axum::Router, token: &str, key: &str) -> String {
-        let payload = json!({"name": format!("Project for {}", key), "key": key});
-        let response = app
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/api/projects")
-                    .header(header::AUTHORIZATION, format!("Bearer {}", token))
-                    .header(header::CONTENT_TYPE, "application/json")
-                    .body(Body::from(payload.to_string()))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-
-        let project: Project =
-            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
-                .unwrap();
-        project.id.unwrap().to_hex()
-    }
 }

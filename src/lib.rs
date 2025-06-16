@@ -14,6 +14,7 @@ pub mod services {
     pub mod auth_service;
     pub mod project_service;
     pub mod task_service;
+    pub mod permission_service;
 }
 
 //Modelos para la base de datos
@@ -40,6 +41,7 @@ pub mod test {
     pub mod task_creation_test;
     pub mod task_read_test;
     pub mod task_edit_test;
+    pub mod project_membership_test;
 }
 
 pub mod router {
@@ -48,4 +50,5 @@ pub mod router {
 
 pub mod helpers {
     pub mod helper_setup_app;
+    pub mod create_project_for_user;
 }

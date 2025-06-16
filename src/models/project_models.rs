@@ -13,7 +13,8 @@ pub struct Project {
     pub project_key: String, // 'key' es una palabra reservada en Rust
     pub description: Option<String>,
     pub owner_id: ObjectId,
-    // Más adelante podríamos añadir 'members: Vec<ObjectId>'
+    #[serde(default)]
+    pub members: Vec<ObjectId>, // Lista de IDs de miembros del proyecto
     #[serde(with = "bson::serde_helpers::chrono_datetime_as_bson_datetime")]
     pub created_at: DateTime<Utc>,
     #[serde(with = "bson::serde_helpers::chrono_datetime_as_bson_datetime")]
@@ -50,4 +51,11 @@ pub struct UpdateProjectSchema {
     ))]
     pub name: Option<String>,
     pub description: Option<String>,
+}
+
+
+#[derive(Deserialize, Validate, Debug)]
+pub struct AddMemberSchema {
+    #[validate(email(message = "El correo electrónico no es valido"))]
+    pub email: String,
 }
