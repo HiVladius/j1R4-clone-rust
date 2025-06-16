@@ -12,7 +12,12 @@ use validator::Validate;
 use crate::{
     db::DatabaseState,
     errors::AppError,
-    models::project_models::{CreateProjectSchema, Project, UpdateProjectSchema},
+    models::{
+        user_model::User,
+
+        project_models::{CreateProjectSchema, Project, UpdateProjectSchema, AddMemberSchema}
+    },
+    services::permission_service::PermissionService,
 };
 
 pub struct ProjectService {
@@ -59,6 +64,7 @@ impl ProjectService {
             project_key: schema.key,
             description: schema.description,
             owner_id,
+            members: vec![], // El creador es el primer miembro
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -180,6 +186,35 @@ impl ProjectService {
             .delete_one(doc! { "_id": project_id })
             .await
             .map_err(|_| AppError::InternalServerError)?;
+
+        Ok(())
+    }
+    pub async fn add_member(
+     &self,
+        project_id: ObjectId,
+        owner_id: ObjectId,
+        schema: AddMemberSchema,   
+    ) -> Result<(), AppError> {
+        schema.validate().map_err(|e| AppError::ValidationError(e.to_string()))?;
+
+        PermissionService::new(self.db_state.get_db())
+            .is_project_owner(project_id, owner_id)
+            .await?;
+
+        let user_to_add = self.db_state.get_db().collection::<User>("users")
+            .find_one(doc! { "email": &schema.email })
+            .await
+            .map_err(|_| AppError::InternalServerError)?
+            .ok_or_else(|| AppError::NotFound("Usuario no encontrado.".to_string()))?;
+
+        self.projects_collection()
+            .update_one(
+                doc! { "_id": project_id },
+                doc! { "$addToSet": { "members": user_to_add.id.unwrap() } },
+            )
+            .await
+            .map_err(|_| AppError::InternalServerError)?;
+
 
         Ok(())
     }

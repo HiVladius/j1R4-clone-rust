@@ -11,7 +11,7 @@ use mongodb::bson::oid::ObjectId;
 use crate::{
     errors::AppError,
     middleware::auth_middleware::AuthenticatedUser,
-    models::project_models::{CreateProjectSchema, Project},
+    models::project_models::{CreateProjectSchema, Project, AddMemberSchema},
     services::project_service::ProjectService,
     state::AppState,
 };
@@ -71,4 +71,21 @@ pub async fn delete_project_handler(
         .await?;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn add_member_handler(
+    State(app_state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthenticatedUser>,
+    Path(project_id): Path<String>,
+    Json(payload): Json<AddMemberSchema>,
+) -> Result<StatusCode, AppError> {
+    let project_id = ObjectId::parse_str(&project_id)
+        .map_err(|_| AppError::ValidationError("ID de proyecto inválido".to_string()))?;
+
+    let project_service = ProjectService::new(app_state.db.clone());
+    project_service
+        .add_member(project_id, auth_user.id, payload)
+        .await?;
+
+        Ok(StatusCode::OK)
 }
