@@ -54,7 +54,7 @@ impl From<User> for UserData {
     }
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Deserialize)]
 pub struct LoginResponse {
     pub token: String,
     pub user: UserData,

@@ -1,6 +1,6 @@
 // Este servicio contendrá la lógica de negocio relacionada con los proyectos.
 use chrono::Utc;
-use futures::{/*stream::StreamExt*/ TryStreamExt};
+use futures::{/*stream::StreamExt*/ StreamExt, TryStreamExt};
 use mongodb::{
     Collection,
     bson::{doc, oid::ObjectId},
@@ -13,7 +13,7 @@ use crate::{
     db::DatabaseState,
     errors::AppError,
     models::{
-        user_model::User,
+        user_model::{User, UserData},
 
         project_models::{CreateProjectSchema, Project, UpdateProjectSchema, AddMemberSchema}
     },
@@ -189,6 +189,8 @@ impl ProjectService {
 
         Ok(())
     }
+    // //! 4. Agregar miembro al proyecto
+    // //! Agrega un miembro al proyecto.
     pub async fn add_member(
      &self,
         project_id: ObjectId,
@@ -218,4 +220,71 @@ impl ProjectService {
 
         Ok(())
     }
+
+    pub async fn list_members(
+        &self,
+        project_id: ObjectId,
+        user_id: ObjectId,
+    )-> Result<Vec<UserData>, AppError>{
+
+        let project = PermissionService::new(self.db_state.get_db())
+            .can_access_project(project_id, user_id)
+            .await?;
+
+        ////! 2. Recopilar todos los ID's (dueño y miembros)        
+        let mut user_ids = project.members;
+        user_ids.push(project.owner_id);
+
+        ////! 3. Buscar todos los documentos de usuario que coincidan con los IDs
+        let users_collection = self.db_state.get_db().collection::<User>("users");
+        let filter = doc! { "_id": { "$in": user_ids } };
+        let mut cursor = users_collection
+            .find(filter)
+            .await
+            .map_err(|_| AppError::InternalServerError)?;
+
+        ////! 4 Mapear los resultados a UserData para la respuesta de la API
+        let mut members_data = Vec::new();
+        while let Some(user) = cursor.next().await {
+            if let Ok(user) = user {
+                members_data.push(user.into());
+            }
+        }
+
+
+        Ok(members_data)
+    }
+
+
+    pub async fn remove_member(
+        &self,
+        project_id: ObjectId,
+        owner_id: ObjectId,
+        member_id_to_remove: ObjectId,
+
+    ) -> Result<(), AppError>{
+
+        PermissionService::new(self.db_state.get_db())
+            .is_project_owner(project_id, owner_id)
+            .await?;
+
+        if owner_id == member_id_to_remove{
+            return Err(AppError::ValidationError("El dueño del proyecto no puede ser eliminado.".to_string()));
+        }
+
+        let update_result = self.projects_collection()
+            .update_one(
+                doc! { "_id": project_id },
+                doc! { "$pull": { "members": member_id_to_remove } },
+            )
+            .await
+            .map_err(|_| AppError::InternalServerError)?;
+
+        if update_result.modified_count == 0 {
+            return Err(AppError::NotFound("Miembro no encontrado en el proyecto.".to_string()));
+        }
+        Ok(())
+    }
+
+
 }

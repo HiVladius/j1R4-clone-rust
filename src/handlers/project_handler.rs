@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::models::project_models::UpdateProjectSchema;
+use crate::models::{project_models::UpdateProjectSchema, user_model::UserData};
 use axum::{
     Json,
     extract::{Extension, Path, State},
@@ -88,4 +88,39 @@ pub async fn add_member_handler(
         .await?;
 
         Ok(StatusCode::OK)
+}
+
+pub async fn list_members_handler(
+    State(app_state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthenticatedUser>,
+    Path(project_id): Path<String>
+) -> Result<Json<Vec<UserData>>, AppError>{
+    let project_id = ObjectId::parse_str(&project_id)
+        .map_err(|_| AppError::ValidationError("ID de proyecto inválido".to_string()))?;
+
+    let project_service = ProjectService::new(app_state.db.clone());
+    let members = project_service
+        .list_members(project_id, auth_user.id)
+        .await?;
+
+    Ok(Json(members))    
+}
+
+
+pub async fn remove_member_handler(
+    State(app_state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthenticatedUser>,
+    Path((project_id, user_id)): Path<(String, String)>,
+)-> Result<StatusCode, AppError>{ 
+    let project_id = ObjectId::parse_str(&project_id)
+        .map_err(|_| AppError::ValidationError("ID de proyecto inválido".to_string()))?;
+    let user_id = ObjectId::parse_str(&user_id)
+        .map_err(|_| AppError::ValidationError("ID de usuario inválido".to_string()))?;
+
+    let project_service = ProjectService::new(app_state.db.clone());
+    project_service
+        .remove_member(project_id, auth_user.id, user_id)
+        .await?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
