@@ -32,7 +32,7 @@ impl TaskService {
         self.db_state.get_db().collection::<Task>("tasks")
     }
 
-    fn _projects_collection(&self) -> Collection<Project> {
+    fn projects_collection(&self) -> Collection<Project> {
         self.db_state.get_db().collection::<Project>("projects")
     }
 
@@ -155,7 +155,17 @@ impl TaskService {
             .map_err(|e| AppError::ValidationError(e.to_string()))?;
 
         // Verificar si la tarea existe
-        let task = self.get_task_by_id(task_id, user_id).await?;
+        let task = self.task_collection().find_one(doc! {"_id": task_id}).await
+            .map_err(|_| AppError::InternalServerError)?
+            .ok_or_else(|| AppError::NotFound("Tarea no encontrada".to_string()))?;
+
+        // Verificar si el usuario puede acceder al proyecto (es dueño o miembro)
+        PermissionService::new(self.db_state.get_db())
+            .can_access_project(task.project_id, user_id)
+            .await?;
+
+        // No es necesario verificar si es dueño o asignado específicamente
+        // Cualquier miembro del proyecto puede actualizar tareas
 
         let mut update_doc = doc! {};
 
@@ -191,16 +201,34 @@ impl TaskService {
             .await
             .map_err(|_| AppError::InternalServerError)?;
 
+
         self.get_task_by_id(task_id, user_id).await
     }
-
 
     // //* Delete a task
     // //* Deletes a task by its ID, ensuring the user has permission to delete it.
     pub async fn delete_task(&self, task_id: ObjectId, user_id: ObjectId) -> Result<(), AppError> {
 
-        // 1.- verificar que la tarea existe y que el usuario tiene permisos
-        self.get_task_by_id(task_id, user_id).await?;
+        let task = self
+            .task_collection()
+            .find_one(doc! {"_id": task_id})
+            .await
+            .map_err(|_| AppError::InternalServerError)?
+            .ok_or_else(|| AppError::NotFound("Tarea no encontrada".to_string()))?;
+
+        let project = self
+            .projects_collection()
+            .find_one(doc! {"_id": task.project_id})
+            .await
+            .map_err(|_| AppError::InternalServerError)?
+            .ok_or_else(|| AppError::NotFound("Proyecto no encontrado".to_string()))?;
+
+
+
+            if project.owner_id != user_id && task.assignee_id != Some(user_id) {
+            return Err(AppError::Unauthorized("No tienes permiso para eliminar esta tarea".to_string()));
+        }
+
 
         // 2.- Eliminar la tarea
 
@@ -211,10 +239,11 @@ impl TaskService {
             .map_err(|_| AppError::InternalServerError)?;
 
         if result.deleted_count == 0 {
-            return Err(AppError::NotFound("Tarea no encontrada".to_string()));
+            return Err(AppError::NotFound("No se pudo eliminar la tarea, es posible que ya haya sido eliminada".to_string()));
         }
 
 
         Ok(())
     }
 }
+

@@ -1,14 +1,15 @@
 use crate::{
     handlers::{
-        auth_handler::{get_me_handler, login_handler, register_handler},
+        auth_handler::{get_me_handler, login_handler, register_handler, },
         project_handler::{
             add_member_handler, create_project_handler, delete_project_handler,
-            get_project_handler, update_project_handler,
+            get_project_handler, update_project_handler, list_members_handler, remove_member_handler
         },
         task_handler::{
             create_task_handler, delete_task_handler, get_task_by_id_handler,
-            get_task_for_project_handler, update_task_handler,
+            get_task_for_project_handler, update_task_handler, 
         },
+        comment_handler::{create_comment_handler, get_comments_handler},
     },
     middleware::auth_middleware::auth_guard,
     state::AppState,
@@ -34,11 +35,16 @@ pub fn get_app(app_state: Arc<AppState>) -> Router {
         .route("/tasks/{task_id}", patch(update_task_handler))
         .route("/tasks/{task_id}", delete(delete_task_handler))
         .route("/projects/{project_id}/members", post(add_member_handler))
+        .route("/projects/{project_id}/members", get(list_members_handler))
+        .route("/projects/{project_id}/members/{member_id}", delete(remove_member_handler))
+        .route("/tasks/{task_id}/comments", post(create_comment_handler))
+        .route("/tasks/{task_id}/comments", get(get_comments_handler))
         .layer(auth_middleware);
 
     let auth_routes = Router::new()
         .route("/register", post(register_handler))
         .route("/login", post(login_handler));
+
 
     Router::new()
         .route("/", get(root_handler))
