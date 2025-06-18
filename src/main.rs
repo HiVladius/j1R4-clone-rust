@@ -1,13 +1,14 @@
 use dotenvy::dotenv;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::net::TcpListener;
+use tokio::sync::broadcast;
 use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
 use jira_clone_backend::config::Config;
 use jira_clone_backend::db::DatabaseState;
 use jira_clone_backend::errors::AppError;
 use jira_clone_backend::router::router::get_app;
-use jira_clone_backend::state::AppState;
+use jira_clone_backend::state::{AppState,};
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
@@ -20,16 +21,17 @@ async fn main() -> Result<(), AppError> {
 
     tracing::info!("Starting Jira Clone Backend...");
 
-    let config = Arc::new(Config::from_env().expect("Error al cargar la configuración"));
-    // tracing::info!("Configuración cargada: {:?}", config);
+    let config = Arc::new(Config::from_env().expect("Error al cargar la configuración"));    // tracing::info!("Configuración cargada: {:?}", config);
 
     let server_address = config.server_address.clone();
 
     let db = DatabaseState::init(&config.database_url, &config.database_name).await?;
     let db_state = Arc::new(db);
 
+    let (ws_tx, _) = broadcast::channel(100);
+
     // Crear el estado compartido de la aplicación
-    let app_state = Arc::new(AppState::new(db_state.clone(), config.clone()));
+    let app_state = Arc::new(AppState::new(db_state.clone(), config.clone(), ws_tx));
 
     // Define a middleware layer for auth_guard using the app_state
     let app = get_app(app_state);

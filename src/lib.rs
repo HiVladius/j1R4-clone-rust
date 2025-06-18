@@ -31,7 +31,7 @@ pub mod handlers {
     pub mod project_handler;
     pub mod task_handler;
     pub mod comment_handler;
-
+    pub mod websocket_handler;
 }
 
 pub mod middleware {

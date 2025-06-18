@@ -1,5 +1,6 @@
 use crate::{
     handlers::{
+        websocket_handler::websocket_handler,
         auth_handler::{get_me_handler, login_handler, register_handler, },
         project_handler::{
             add_member_handler, create_project_handler, delete_project_handler,
@@ -47,7 +48,9 @@ pub fn get_app(app_state: Arc<AppState>) -> Router {
 
 
     Router::new()
+        .route("/ws", get(websocket_handler))
         .route("/", get(root_handler))
+
         .nest("/api/auth", auth_routes)
         .nest("/api", protected_routes)
         .with_state(app_state)

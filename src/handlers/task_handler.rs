@@ -23,7 +23,7 @@ pub async fn create_task_handler(
     let project_id = ObjectId::parse_str(&project_id)
         .map_err(|_| AppError::ValidationError("ID de proyecto invalido".to_string()))?;
 
-    let task_service = TaskService::new(app_state.db.clone());
+    let task_service = TaskService::new(app_state.db.clone(), app_state.ws_tx.clone());
 
     let new_task = task_service
         .create_task(task_data, project_id, auth_user.id)
@@ -40,7 +40,7 @@ pub async fn get_task_for_project_handler(
     let project_id = ObjectId::parse_str(&project_id)
         .map_err(|_| AppError::ValidationError("ID de proyecto invalido".to_string()))?;
 
-    let task_service = TaskService::new(app_state.db.clone());
+    let task_service = TaskService::new(app_state.db.clone(), app_state.ws_tx.clone());
     let tasks = task_service
         .get_task_for_project(project_id, auth_user.id)
         .await?;
@@ -56,7 +56,7 @@ pub async fn get_task_by_id_handler(
     let task_id = ObjectId::parse_str(&task_id)
         .map_err(|_| AppError::ValidationError("ID de tarea invalido".to_string()))?;
 
-    let task_service = TaskService::new(app_state.db.clone());
+    let task_service = TaskService::new(app_state.db.clone(), app_state.ws_tx.clone());
     let task = task_service.get_task_by_id(task_id, auth_user.id).await?;
 
     Ok(Json(task))
@@ -71,7 +71,7 @@ pub async fn update_task_handler(
     let task_id = ObjectId::parse_str(&task_id)
         .map_err(|_| AppError::ValidationError("ID de tarea invalido".to_string()))?;
 
-    let task_service = TaskService::new(app_state.db.clone());
+    let task_service = TaskService::new(app_state.db.clone(), app_state.ws_tx.clone());
     let update_task = task_service
         .update_task(task_id, auth_user.id, payload)
         .await?;
@@ -90,7 +90,7 @@ pub async fn delete_task_handler(
     let task_id = ObjectId::parse_str(&task_id)
         .map_err(|_| AppError::ValidationError("ID de tarea invalido".to_string()))?;
 
-    let task_service = TaskService::new(app_state.db.clone());
+    let task_service = TaskService::new(app_state.db.clone(), app_state.ws_tx.clone());
     task_service
         .delete_task(task_id, auth_user.id)
         .await?;

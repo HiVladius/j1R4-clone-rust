@@ -6,6 +6,8 @@ use mongodb::{
 };
 use std::sync::Arc;
 use validator::Validate;
+use bson::to_bson;
+use tokio::sync::broadcast;
 
 use crate::{
     db::DatabaseState,
@@ -17,15 +19,15 @@ use crate::{
     services::permission_service::PermissionService
 };
 
-use bson::to_bson;
 
 pub struct TaskService {
     db_state: Arc<DatabaseState>,
+    ws_tx: broadcast::Sender<String>,
 }
 
 impl TaskService {
-    pub fn new(db_state: Arc<DatabaseState>) -> Self {
-        Self { db_state }
+    pub fn new(db_state: Arc<DatabaseState>, ws_tx: broadcast::Sender<String>) -> Self {
+        Self { db_state, ws_tx }
     }
 
     fn task_collection(&self) -> Collection<Task> {
@@ -201,8 +203,20 @@ impl TaskService {
             .await
             .map_err(|_| AppError::InternalServerError)?;
 
+        let updated_task = self.get_task_by_id(task_id, user_id).await?;
+        
+        // nueva logica de broadcast
+        let broadcast_message = serde_json::json!({
+            "event_type": "TASK_UPDATED",
+            "task": updated_task,
+        }).to_string();
 
-        self.get_task_by_id(task_id, user_id).await
+        let _= self.ws_tx.send(broadcast_message);
+        
+        Ok(updated_task)
+
+
+
     }
 
     // //* Delete a task
