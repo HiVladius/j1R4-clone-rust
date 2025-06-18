@@ -3,3 +3,8 @@
 .env
 
 **.txt
+
+# Ignore a .json files
+enviroment.json
+jira-clone-collection.json
+test-data.json

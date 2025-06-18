@@ -2,6 +2,7 @@ use crate::{config::Config, db::DatabaseState, router::router::get_app, state::A
 use axum::{Router, body::Body, http::Request};
 use dotenvy::dotenv;
 use serde_json::json;
+use tokio::sync::broadcast;
 
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -18,7 +19,10 @@ async fn setup_app() -> Router {
             .expect("Fallo al inicializar la base de datos"),
     );
 
-    let app_state = Arc::new(AppState::new(db_state, config));
+    // Crear un canal de broadcast para WebSocket
+    let (ws_tx, _) = broadcast::channel(100); // Tamaño del buffer de 100 mensajes
+
+    let app_state = Arc::new(AppState::new(db_state, config, ws_tx));
     get_app(app_state)
 }
 

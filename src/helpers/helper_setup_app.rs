@@ -6,6 +6,7 @@ use axum::{
 use bson:: oid::ObjectId;
 use dotenvy::dotenv;
 use mongodb::bson::doc;
+use tokio::sync::broadcast;
 use tower::ServiceExt;
 
 use crate::{
@@ -18,7 +19,7 @@ use crate::{
         comment_model::Comment,
     },
     router::router::get_app,
-    state::AppState,
+    state::{AppState},
 };
 
 use serde_json::from_slice;
@@ -61,7 +62,11 @@ pub async fn setup_app() -> Router {
         .delete_many(doc! {})
         .await
         .ok();
-    let app_state = Arc::new(AppState::new(db_state, config));
+    
+    // Create a temporary WebSocket channel for tests
+    let (ws_tx, _) = broadcast::channel::<String>(100);
+    
+    let app_state = Arc::new(AppState::new(db_state, config, ws_tx));
     get_app(app_state)
 }
 
