@@ -47,6 +47,7 @@ pub mod test {
     pub mod task_edit_test;
     pub mod project_membership_test;
     pub mod comment_integration_test;
+    pub mod comment_edit_test;
 }
 
 pub mod router {

@@ -1,8 +1,7 @@
 use chrono::Utc;
 use futures::stream::StreamExt;
 use mongodb::{
-    Collection,
-    bson::{Document, doc, oid::ObjectId, from_document},
+     bson::{doc, from_document, oid::ObjectId, Document}, Collection
 };
 use std::sync::Arc;
 use validator::Validate;
@@ -11,7 +10,7 @@ use crate::{
     db::{ DatabaseState},
     errors::AppError,
     models::{
-        comment_model::{Comment, CommentData, CreateCommentSchema},
+        comment_model::{Comment, CommentData, CreateCommentSchema, UpdateCommentSchema},
         task_model::Task,
         
     },
@@ -31,6 +30,7 @@ impl CommentService {
         self.db.db.collection("comments")
     }
 
+    // //* Revisar permisos para acceder a la tarea
     async fn check_permissions(
         &self,
         task_id: ObjectId,
@@ -50,7 +50,12 @@ impl CommentService {
             .await?;
 
         Ok(())
-    }    pub async fn create_comment(
+
+
+    }   
+    
+    // //* Crea un nuevo comentario
+     pub async fn create_comment(
         &self,
         task_id: ObjectId,
         author_id: ObjectId,
@@ -81,7 +86,10 @@ impl CommentService {
             .into_iter()
             .next()
             .ok_or(AppError::InternalServerError)
-    }    pub async fn get_comments_for_task(
+    }    
+    
+    // //* Actualiza un comentario existente
+    pub async fn get_comments_for_task(
         &self,
         task_id: ObjectId,
         user_id: ObjectId,
@@ -138,5 +146,72 @@ impl CommentService {
         }
 
         Ok(comments)
+    }
+
+
+    // //* Actualiza un comentario existente
+
+    pub async fn update_comment(
+        &self,
+        comment_id: ObjectId,
+        user_id: ObjectId,
+        shcema:  UpdateCommentSchema,
+    ) -> Result<CommentData, AppError>{
+
+        shcema.validate()
+            .map_err(|e| AppError::ValidationError(e.to_string()))?;
+
+        let comment = self.comments_collection()
+            .find_one(doc!{"_id": comment_id, } ).await
+            .map_err(|e| AppError::DatabaseError(format!("Failed to fetch comment: {}", e)))?
+            .ok_or(AppError::NotFound("Comentario no encontrado".to_string()))?;
+
+        if comment.user_id != user_id {
+            return Err(AppError::Unauthorized("No tienes permiso para actualizar este comentario".to_string()));
+        }
+
+        let update_doc = doc!{
+            "$set": {
+                "content": shcema.content,
+                "updated_at": Utc::now(),
+            }
+        };
+
+        self.comments_collection()
+            .update_one(doc! {"_id": comment_id},  update_doc)
+            .await
+            .map_err(|e| AppError::DatabaseError(format!("Failed to update comment: {}", e)))?;
+
+        let updated_comment = self
+            .get_comments_for_task(comment.task_id, user_id, Some(comment_id))
+            .await?;
+            
+        
+        updated_comment.into_iter().next().ok_or(AppError::InternalServerError)
+
+
+    }
+
+    pub async fn delete_comment(
+        &self,
+        comment_id: ObjectId,
+        user_id: ObjectId,
+    ) -> Result<(), AppError>{
+
+        let comment = self.comments_collection()
+            .find_one(doc! { "_id": comment_id }).await
+            .map_err(|e| AppError::DatabaseError(format!("Failed to fetch comment: {}", e)))?
+            .ok_or(AppError::NotFound("Comentario no encontrado".to_string()))?;
+
+        if comment.user_id != user_id {
+            return Err(AppError::Unauthorized("No tienes permiso para eliminar este comentario".to_string()));
+        }
+
+        self.comments_collection()
+            .delete_one(doc! { "_id": comment_id })
+            .await
+            .map_err(|e| AppError::DatabaseError(format!("Failed to delete comment: {}", e)))?;
+
+        Ok(())
     }
 }
