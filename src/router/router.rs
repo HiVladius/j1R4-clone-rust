@@ -25,8 +25,34 @@ use axum::{
 };
 use std::sync::Arc;
 
+use tower_http::cors::{CorsLayer};
+use axum::http::{HeaderValue, Method};
+
+
 pub fn get_app(app_state: Arc<AppState>) -> Router {
     let auth_middleware = middleware::from_fn_with_state(app_state.clone(), auth_guard);
+
+    // Configuración CORS más específica y segura
+    let cors = CorsLayer::new()
+        .allow_origin(
+            app_state.config.cors_origins
+                .iter()
+                .map(|origin| origin.parse::<HeaderValue>().unwrap())
+                .collect::<Vec<_>>()
+        )
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PATCH,
+            Method::DELETE,
+            Method::OPTIONS,
+        ])
+        .allow_headers([
+            axum::http::header::AUTHORIZATION,
+            axum::http::header::CONTENT_TYPE,
+            axum::http::header::ACCEPT,
+        ])
+        .allow_credentials(true);
 
     let protected_routes = Router::new()
         .route("/me", get(get_me_handler))
@@ -57,6 +83,7 @@ pub fn get_app(app_state: Arc<AppState>) -> Router {
         .route("/", get(root_handler))
         .nest("/api/auth", auth_routes)
         .nest("/api", protected_routes)
+        .layer(cors)
         .with_state(app_state)
 }
 
