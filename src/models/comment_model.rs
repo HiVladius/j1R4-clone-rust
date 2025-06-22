@@ -36,3 +36,9 @@ pub struct CommentData {
     #[serde(with = "bson::serde_helpers::chrono_datetime_as_bson_datetime")]
     pub updated_at: DateTime<Utc>,
 }
+
+#[derive(Deserialize, Validate, Debug)]
+pub struct UpdateCommentSchema {
+    #[validate(length(min = 1, message = "El comentario no puede estar vacío"))]
+    pub content: String,
+}
