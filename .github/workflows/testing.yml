@@ -52,22 +52,27 @@ jobs:
         
         - name: Wait for MongoDB
           run: |
-            until mongosh --eval "print('MongoDB is ready')" > /dev/null 2>&1; do
-              echo "Waiting for MongoDB..."
-              sleep 5
+            echo "Waiting for MongoDB to be ready..."
+            timeout=60
+            count=0
+            until nc -z localhost 27017; do
+              if [ $count -ge $timeout ]; then
+                echo "MongoDB failed to start within $timeout seconds"
+                docker logs $(docker ps -q --filter "ancestor=mongo:7.0") || echo "No MongoDB container logs available"
+                exit 1
+              fi
+              echo "MongoDB not ready yet... waiting (${count}s/${timeout}s)"
+              sleep 2
+              count=$((count + 2))
             done
+            echo "MongoDB is ready!"
             
-        - name: Run specific integration tests
+        - name: Test MongoDB connection
           run: |
-            cargo test comment_edit_test
-            cargo test comment_integration_test
-            cargo test project_edit_test
-            cargo test project_integration_test
-            cargo test project_membership_test
-            cargo test task_creation_test
-            cargo test task_edit_test
-            cargo test task_read_test
-
+            # Verificar que MongoDB responde
+            timeout 10 bash -c 'until printf "" 2>>/dev/null >>/dev/tcp/localhost/27017; do sleep 1; done'
+            echo "MongoDB connection verified!"
+            
         - name: Check code formatting
           run: cargo fmt --all -- --check
         
@@ -76,3 +81,17 @@ jobs:
         
         - name: Build project
           run: cargo build --verbose
+            
+        - name: Run specific integration tests
+          run: |
+            cargo test comment_edit_test --verbose
+            cargo test comment_integration_test --verbose
+            cargo test project_edit_test --verbose
+            cargo test project_integration_test --verbose
+            cargo test project_membership_test --verbose
+            cargo test task_creation_test --verbose
+            cargo test task_edit_test --verbose
+            cargo test task_read_test --verbose
+          env:
+            RUST_LOG: debug
+            RUST_BACKTRACE: 1
