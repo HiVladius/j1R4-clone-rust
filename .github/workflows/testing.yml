@@ -1,0 +1,78 @@
+name: Testing
+
+on: 
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs: 
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ping: 1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env: 
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+      DATABASE_NAME_TEST: ${{ secrets.DATABASE_NAME_TEST }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      SERVER_ADDRESS: ${{ secrets.SERVER_ADDRESS }}
+      CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
+
+    steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+        
+        - name: Install Rust
+          uses: dtolnay/rust-toolchain@stable
+          with:
+            components: rustfmt, clippy
+        
+        - name: Cache Rust dependencies
+          uses: actions/cache@v4
+          with:
+            path: |
+              ~/.cargo/bin/
+              ~/.cargo/registry/index
+              ~/.cargo/registry/cache
+              ~/.cargo/git/db
+            key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        
+        - name: Wait for MongoDB
+          run: |
+            until mongosh --eval "print('MongoDB is ready')" > /dev/null 2>&1; do
+              echo "Waiting for MongoDB..."
+              sleep 5
+            done
+            
+        - name: Run specific integration tests
+          run: |
+            cargo test comment_edit_test
+            cargo test comment_integration_test
+            cargo test project_edit_test
+            cargo test project_integration_test
+            cargo test project_membership_test
+            cargo test task_creation_test
+            cargo test task_edit_test
+            cargo test task_read_test
+
+        - name: Check code formatting
+          run: cargo fmt --all -- --check
+        
+        - name: Run Clippy
+          run: cargo clippy --all-targets --all-features -- -D warnings
+        
+        - name: Build project
+          run: cargo build --verbose
