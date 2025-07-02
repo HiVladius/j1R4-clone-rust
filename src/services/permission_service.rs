@@ -1,14 +1,14 @@
-use mongodb::{bson::{doc, oid::ObjectId}, Collection, Database};
-use crate::{
-    errors::AppError,
-    models::project_models::Project,
+use crate::{errors::AppError, models::project_models::Project};
+use mongodb::{
+    Collection, Database,
+    bson::{doc, oid::ObjectId},
 };
 
-pub struct PermissionService<'a>{
+pub struct PermissionService<'a> {
     db: &'a Database,
 }
 
-impl <'a> PermissionService<'a>  {
+impl<'a> PermissionService<'a> {
     pub fn new(db: &'a Database) -> Self {
         Self { db }
     }
@@ -20,9 +20,7 @@ impl <'a> PermissionService<'a>  {
         &self,
         project_id: ObjectId,
         user_id: ObjectId,
-
-    ) -> Result<Project, AppError>{
-
+    ) -> Result<Project, AppError> {
         let project = self
             .projects_collection()
             .find_one(doc! {"_id": project_id})
@@ -30,19 +28,20 @@ impl <'a> PermissionService<'a>  {
             .map_err(|_| AppError::InternalServerError)?
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
-            if project.owner_id != user_id && !project.members.contains(&user_id) {
-                return Err(AppError::Unauthorized("You do not have access to this project".to_string()));
-            }
+        if project.owner_id != user_id && !project.members.contains(&user_id) {
+            return Err(AppError::Unauthorized(
+                "You do not have access to this project".to_string(),
+            ));
+        }
 
-            Ok(project)
+        Ok(project)
     }
 
     pub async fn is_project_owner(
         &self,
         project_id: ObjectId,
         user_id: ObjectId,
-    )-> Result<Project, AppError>{
-        
+    ) -> Result<Project, AppError> {
         let project = self
             .projects_collection()
             .find_one(doc! {"_id": project_id})
@@ -51,10 +50,10 @@ impl <'a> PermissionService<'a>  {
             .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         if project.owner_id != user_id {
-            return Err(AppError::Unauthorized("You are not the owner of this project".to_string()));
+            return Err(AppError::Unauthorized(
+                "You are not the owner of this project".to_string(),
+            ));
         }
         Ok(project)
     }
-
-    
 }

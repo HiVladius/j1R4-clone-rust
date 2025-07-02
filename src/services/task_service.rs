@@ -1,3 +1,4 @@
+use bson::to_bson;
 use chrono::Utc;
 use futures::StreamExt;
 use mongodb::{
@@ -5,9 +6,8 @@ use mongodb::{
     bson::{DateTime, doc, oid::ObjectId},
 };
 use std::sync::Arc;
-use validator::Validate;
-use bson::to_bson;
 use tokio::sync::broadcast;
+use validator::Validate;
 
 use crate::{
     db::DatabaseState,
@@ -16,9 +16,8 @@ use crate::{
         project_models::Project,
         task_model::{CreateTaskSchema, Task, TaskPriority, TaskStatus, UpdateTaskSchema},
     },
-    services::permission_service::PermissionService
+    services::permission_service::PermissionService,
 };
-
 
 pub struct TaskService {
     db_state: Arc<DatabaseState>,
@@ -49,7 +48,6 @@ impl TaskService {
         schema
             .validate()
             .map_err(|e| AppError::ValidationError(e.to_string()))?;
-
 
         PermissionService::new(self.db_state.get_db())
             .can_access_project(project_id, reporter_id)
@@ -92,12 +90,16 @@ impl TaskService {
         let broadcast_message = serde_json::json!({
             "event_type": "TASK_CREATED",
             "task": new_task,
-        }).to_string();
+        })
+        .to_string();
 
         if let Err(e) = self.ws_tx.send(broadcast_message) {
             tracing::warn!("Error enviando mensaje WebSocket para tarea creada: {}", e);
         } else {
-            tracing::info!("Mensaje WebSocket enviado para tarea creada: {}", new_task.id.unwrap());
+            tracing::info!(
+                "Mensaje WebSocket enviado para tarea creada: {}",
+                new_task.id.unwrap()
+            );
         }
 
         Ok(new_task)
@@ -110,7 +112,6 @@ impl TaskService {
         project_id: ObjectId,
         user_id: ObjectId,
     ) -> Result<Vec<Task>, AppError> {
-        
         // Verificacion de permisos
 
         PermissionService::new(self.db_state.get_db())
@@ -149,7 +150,7 @@ impl TaskService {
             .map_err(|_| AppError::InternalServerError)?
             .ok_or_else(|| AppError::NotFound("Tarea no encontrada".to_string()))?;
 
-            PermissionService::new(self.db_state.get_db())
+        PermissionService::new(self.db_state.get_db())
             .can_access_project(task.project_id, user_id)
             .await?;
 
@@ -169,7 +170,10 @@ impl TaskService {
             .map_err(|e| AppError::ValidationError(e.to_string()))?;
 
         // Verificar si la tarea existe
-        let task = self.task_collection().find_one(doc! {"_id": task_id}).await
+        let task = self
+            .task_collection()
+            .find_one(doc! {"_id": task_id})
+            .await
             .map_err(|_| AppError::InternalServerError)?
             .ok_or_else(|| AppError::NotFound("Tarea no encontrada".to_string()))?;
 
@@ -187,7 +191,11 @@ impl TaskService {
         let status_changed = schema.status.is_some();
         let priority_changed = schema.priority.is_some();
         let assignee_changed = schema.assignee_id.is_some();
-        let previous_status = if status_changed { Some(task.status.clone()) } else { None };
+        let previous_status = if status_changed {
+            Some(task.status.clone())
+        } else {
+            None
+        };
 
         let mut update_doc = doc! {};
 
@@ -224,7 +232,7 @@ impl TaskService {
             .map_err(|_| AppError::InternalServerError)?;
 
         let updated_task = self.get_task_by_id(task_id, user_id).await?;
-        
+
         // nueva logica de broadcast con información detallada de cambios
         let broadcast_message = serde_json::json!({
             "event_type": "TASK_UPDATED",
@@ -240,24 +248,28 @@ impl TaskService {
                     "assignee_id": assignee_changed
                 }
             }
-        }).to_string();
+        })
+        .to_string();
 
         if let Err(e) = self.ws_tx.send(broadcast_message) {
-            tracing::warn!("Error enviando mensaje WebSocket para tarea actualizada: {}", e);
+            tracing::warn!(
+                "Error enviando mensaje WebSocket para tarea actualizada: {}",
+                e
+            );
         } else {
-            tracing::info!("Mensaje WebSocket enviado para tarea actualizada: {} (status_changed: {})", task_id, status_changed);
+            tracing::info!(
+                "Mensaje WebSocket enviado para tarea actualizada: {} (status_changed: {})",
+                task_id,
+                status_changed
+            );
         }
-        
+
         Ok(updated_task)
-
-
-
     }
 
     // //* Delete a task
     // //* Deletes a task by its ID, ensuring the user has permission to delete it.
     pub async fn delete_task(&self, task_id: ObjectId, user_id: ObjectId) -> Result<(), AppError> {
-
         let task = self
             .task_collection()
             .find_one(doc! {"_id": task_id})
@@ -272,12 +284,11 @@ impl TaskService {
             .map_err(|_| AppError::InternalServerError)?
             .ok_or_else(|| AppError::NotFound("Proyecto no encontrado".to_string()))?;
 
-
-
-            if project.owner_id != user_id && task.assignee_id != Some(user_id) {
-            return Err(AppError::Unauthorized("No tienes permiso para eliminar esta tarea".to_string()));
+        if project.owner_id != user_id && task.assignee_id != Some(user_id) {
+            return Err(AppError::Unauthorized(
+                "No tienes permiso para eliminar esta tarea".to_string(),
+            ));
         }
-
 
         // 2.- Eliminar la tarea
 
@@ -288,7 +299,9 @@ impl TaskService {
             .map_err(|_| AppError::InternalServerError)?;
 
         if result.deleted_count == 0 {
-            return Err(AppError::NotFound("No se pudo eliminar la tarea, es posible que ya haya sido eliminada".to_string()));
+            return Err(AppError::NotFound(
+                "No se pudo eliminar la tarea, es posible que ya haya sido eliminada".to_string(),
+            ));
         }
 
         // Emitir mensaje WebSocket para tarea eliminada
@@ -296,15 +309,21 @@ impl TaskService {
             "event_type": "TASK_DELETED",
             "task_id": task_id.to_hex(),
             "project_id": task.project_id.to_hex(),
-        }).to_string();
+        })
+        .to_string();
 
         if let Err(e) = self.ws_tx.send(broadcast_message) {
-            tracing::warn!("Error enviando mensaje WebSocket para tarea eliminada: {}", e);
+            tracing::warn!(
+                "Error enviando mensaje WebSocket para tarea eliminada: {}",
+                e
+            );
         } else {
-            tracing::info!("Mensaje WebSocket enviado para tarea eliminada: {}", task_id);
+            tracing::info!(
+                "Mensaje WebSocket enviado para tarea eliminada: {}",
+                task_id
+            );
         }
 
         Ok(())
     }
 }
-

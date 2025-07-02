@@ -25,9 +25,8 @@ use axum::{
 };
 use std::sync::Arc;
 
-use tower_http::cors::{CorsLayer};
 use axum::http::{HeaderValue, Method};
-
+use tower_http::cors::CorsLayer;
 
 pub fn get_app(app_state: Arc<AppState>) -> Router {
     let auth_middleware = middleware::from_fn_with_state(app_state.clone(), auth_guard);
@@ -35,10 +34,12 @@ pub fn get_app(app_state: Arc<AppState>) -> Router {
     // Configuración CORS más específica y segura
     let cors = CorsLayer::new()
         .allow_origin(
-            app_state.config.cors_origins
+            app_state
+                .config
+                .cors_origins
                 .iter()
                 .map(|origin| origin.parse::<HeaderValue>().unwrap())
-                .collect::<Vec<_>>()
+                .collect::<Vec<_>>(),
         )
         .allow_methods([
             Method::GET,
@@ -60,18 +61,30 @@ pub fn get_app(app_state: Arc<AppState>) -> Router {
         .route("/projects", get(get_project_handler))
         .route("/projects/{project_id}", patch(update_project_handler))
         .route("/projects/{project_id}", delete(delete_project_handler))
-        .route("/projects/{project_id}/tasks",get(get_task_for_project_handler),)
+        .route(
+            "/projects/{project_id}/tasks",
+            get(get_task_for_project_handler),
+        )
         .route("/projects/{project_id}/tasks", post(create_task_handler))
         .route("/tasks/{task_id}", get(get_task_by_id_handler))
         .route("/tasks/{task_id}", patch(update_task_handler))
         .route("/tasks/{task_id}", delete(delete_task_handler))
         .route("/projects/{project_id}/members", post(add_member_handler))
         .route("/projects/{project_id}/members", get(list_members_handler))
-        .route("/projects/{project_id}/members/{member_id}",delete(remove_member_handler),)
+        .route(
+            "/projects/{project_id}/members/{member_id}",
+            delete(remove_member_handler),
+        )
         .route("/tasks/{task_id}/comments", post(create_comment_handler))
         .route("/tasks/{task_id}/comments", get(get_comments_handler))
-        .route("/tasks/{task_id}/comments/{comment_id}", patch(update_comment_handler))
-        .route("/tasks/{task_id}/comments/{comment_id}", delete(delete_comment_handler))
+        .route(
+            "/tasks/{task_id}/comments/{comment_id}",
+            patch(update_comment_handler),
+        )
+        .route(
+            "/tasks/{task_id}/comments/{comment_id}",
+            delete(delete_comment_handler),
+        )
         .layer(auth_middleware);
 
     let auth_routes = Router::new()

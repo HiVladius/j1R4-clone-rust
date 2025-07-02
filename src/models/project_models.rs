@@ -53,7 +53,6 @@ pub struct UpdateProjectSchema {
     pub description: Option<String>,
 }
 
-
 #[derive(Deserialize, Validate, Debug)]
 pub struct AddMemberSchema {
     #[validate(email(message = "El correo electrónico no es valido"))]

@@ -13,9 +13,8 @@ use crate::{
     db::DatabaseState,
     errors::AppError,
     models::{
+        project_models::{AddMemberSchema, CreateProjectSchema, Project, UpdateProjectSchema},
         user_model::{User, UserData},
-
-        project_models::{CreateProjectSchema, Project, UpdateProjectSchema, AddMemberSchema}
     },
     services::permission_service::PermissionService,
 };
@@ -192,18 +191,23 @@ impl ProjectService {
     // //! 4. Agregar miembro al proyecto
     // //! Agrega un miembro al proyecto.
     pub async fn add_member(
-     &self,
+        &self,
         project_id: ObjectId,
         owner_id: ObjectId,
-        schema: AddMemberSchema,   
+        schema: AddMemberSchema,
     ) -> Result<(), AppError> {
-        schema.validate().map_err(|e| AppError::ValidationError(e.to_string()))?;
+        schema
+            .validate()
+            .map_err(|e| AppError::ValidationError(e.to_string()))?;
 
         PermissionService::new(self.db_state.get_db())
             .is_project_owner(project_id, owner_id)
             .await?;
 
-        let user_to_add = self.db_state.get_db().collection::<User>("users")
+        let user_to_add = self
+            .db_state
+            .get_db()
+            .collection::<User>("users")
             .find_one(doc! { "email": &schema.email })
             .await
             .map_err(|_| AppError::InternalServerError)?
@@ -217,7 +221,6 @@ impl ProjectService {
             .await
             .map_err(|_| AppError::InternalServerError)?;
 
-
         Ok(())
     }
 
@@ -225,13 +228,12 @@ impl ProjectService {
         &self,
         project_id: ObjectId,
         user_id: ObjectId,
-    )-> Result<Vec<UserData>, AppError>{
-
+    ) -> Result<Vec<UserData>, AppError> {
         let project = PermissionService::new(self.db_state.get_db())
             .can_access_project(project_id, user_id)
             .await?;
 
-        ////! 2. Recopilar todos los ID's (dueño y miembros)        
+        ////! 2. Recopilar todos los ID's (dueño y miembros)
         let mut user_ids = project.members;
         user_ids.push(project.owner_id);
 
@@ -251,28 +253,27 @@ impl ProjectService {
             }
         }
 
-
         Ok(members_data)
     }
-
 
     pub async fn remove_member(
         &self,
         project_id: ObjectId,
         owner_id: ObjectId,
         member_id_to_remove: ObjectId,
-
-    ) -> Result<(), AppError>{
-
+    ) -> Result<(), AppError> {
         PermissionService::new(self.db_state.get_db())
             .is_project_owner(project_id, owner_id)
             .await?;
 
-        if owner_id == member_id_to_remove{
-            return Err(AppError::ValidationError("El dueño del proyecto no puede ser eliminado.".to_string()));
+        if owner_id == member_id_to_remove {
+            return Err(AppError::ValidationError(
+                "El dueño del proyecto no puede ser eliminado.".to_string(),
+            ));
         }
 
-        let update_result = self.projects_collection()
+        let update_result = self
+            .projects_collection()
             .update_one(
                 doc! { "_id": project_id },
                 doc! { "$pull": { "members": member_id_to_remove } },
@@ -281,10 +282,10 @@ impl ProjectService {
             .map_err(|_| AppError::InternalServerError)?;
 
         if update_result.modified_count == 0 {
-            return Err(AppError::NotFound("Miembro no encontrado en el proyecto.".to_string()));
+            return Err(AppError::NotFound(
+                "Miembro no encontrado en el proyecto.".to_string(),
+            ));
         }
         Ok(())
     }
-
-
 }

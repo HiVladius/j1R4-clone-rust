@@ -3,7 +3,6 @@ use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-
 use super::user_model::UserData;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

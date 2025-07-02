@@ -1,18 +1,18 @@
 use chrono::Utc;
 use futures::stream::StreamExt;
 use mongodb::{
-     bson::{doc, from_document, oid::ObjectId, Document}, Collection
+    Collection,
+    bson::{Document, doc, from_document, oid::ObjectId},
 };
 use std::sync::Arc;
 use validator::Validate;
 
 use crate::{
-    db::{ DatabaseState},
+    db::DatabaseState,
     errors::AppError,
     models::{
         comment_model::{Comment, CommentData, CreateCommentSchema, UpdateCommentSchema},
         task_model::Task,
-        
     },
     services::permission_service::PermissionService,
 };
@@ -50,12 +50,10 @@ impl CommentService {
             .await?;
 
         Ok(())
+    }
 
-
-    }   
-    
     // //* Crea un nuevo comentario
-     pub async fn create_comment(
+    pub async fn create_comment(
         &self,
         task_id: ObjectId,
         author_id: ObjectId,
@@ -76,7 +74,10 @@ impl CommentService {
             updated_at: Utc::now(),
         };
 
-        let result = self.comments_collection().insert_one(&new_comment).await
+        let result = self
+            .comments_collection()
+            .insert_one(&new_comment)
+            .await
             .map_err(|e| AppError::DatabaseError(format!("Failed to insert comment: {}", e)))?;
         let comment_id = result.inserted_id.as_object_id().unwrap();
         let comments = self
@@ -86,16 +87,15 @@ impl CommentService {
             .into_iter()
             .next()
             .ok_or(AppError::InternalServerError)
-    }    
-    
+    }
+
     // //* Actualiza un comentario existente
     pub async fn get_comments_for_task(
         &self,
         task_id: ObjectId,
         user_id: ObjectId,
-        single_comment_id: Option<ObjectId>
-    )-> Result<Vec<CommentData>, AppError> {
-
+        single_comment_id: Option<ObjectId>,
+    ) -> Result<Vec<CommentData>, AppError> {
         self.check_permissions(task_id, user_id).await?;
 
         // //? Pipeline de agregación para obtener comentarios con datos del usuario
@@ -105,9 +105,9 @@ impl CommentService {
         }
 
         let pipeline: Vec<Document> = vec![
-            doc!{ "$match": initial_match },
-            doc!{ "$sort": { "created_at": 1 } },
-            doc!{
+            doc! { "$match": initial_match },
+            doc! { "$sort": { "created_at": 1 } },
+            doc! {
                 "$lookup": {
                     "from": "users",
                     "localField": "user_id",
@@ -115,9 +115,8 @@ impl CommentService {
                     "as": "author"
                 }
             },
-
-            doc!{"$unwind": "$author"},
-            doc!{
+            doc! {"$unwind": "$author"},
+            doc! {
                 "$project": {
                     "_id": 0,
                     "id": {"$toString": "$_id"},
@@ -131,23 +130,27 @@ impl CommentService {
                         "email": "$author.email",
                     }
                 }
-            }
+            },
         ];
 
-        let mut cursor = self.comments_collection().aggregate(pipeline).await
+        let mut cursor = self
+            .comments_collection()
+            .aggregate(pipeline)
+            .await
             .map_err(|e| AppError::DatabaseError(format!("Failed to fetch comments: {}", e)))?;
         let mut comments = Vec::new();
 
         while let Some(doc) = cursor.next().await {
-            let doc = doc.map_err(|e| AppError::DatabaseError(format!("Failed to fetch document: {}", e)))?;
-            let comment_data: CommentData = from_document(doc)
-                .map_err(|e| AppError::DatabaseError(format!("Failed to deserialize comment: {}", e)))?;
+            let doc = doc
+                .map_err(|e| AppError::DatabaseError(format!("Failed to fetch document: {}", e)))?;
+            let comment_data: CommentData = from_document(doc).map_err(|e| {
+                AppError::DatabaseError(format!("Failed to deserialize comment: {}", e))
+            })?;
             comments.push(comment_data);
         }
 
         Ok(comments)
     }
-
 
     // //* Actualiza un comentario existente
 
@@ -155,22 +158,26 @@ impl CommentService {
         &self,
         comment_id: ObjectId,
         user_id: ObjectId,
-        shcema:  UpdateCommentSchema,
-    ) -> Result<CommentData, AppError>{
-
-        shcema.validate()
+        shcema: UpdateCommentSchema,
+    ) -> Result<CommentData, AppError> {
+        shcema
+            .validate()
             .map_err(|e| AppError::ValidationError(e.to_string()))?;
 
-        let comment = self.comments_collection()
-            .find_one(doc!{"_id": comment_id, } ).await
+        let comment = self
+            .comments_collection()
+            .find_one(doc! {"_id": comment_id, })
+            .await
             .map_err(|e| AppError::DatabaseError(format!("Failed to fetch comment: {}", e)))?
             .ok_or(AppError::NotFound("Comentario no encontrado".to_string()))?;
 
         if comment.user_id != user_id {
-            return Err(AppError::Unauthorized("No tienes permiso para actualizar este comentario".to_string()));
+            return Err(AppError::Unauthorized(
+                "No tienes permiso para actualizar este comentario".to_string(),
+            ));
         }
 
-        let update_doc = doc!{
+        let update_doc = doc! {
             "$set": {
                 "content": shcema.content,
                 "updated_at": Utc::now(),
@@ -178,33 +185,36 @@ impl CommentService {
         };
 
         self.comments_collection()
-            .update_one(doc! {"_id": comment_id},  update_doc)
+            .update_one(doc! {"_id": comment_id}, update_doc)
             .await
             .map_err(|e| AppError::DatabaseError(format!("Failed to update comment: {}", e)))?;
 
         let updated_comment = self
             .get_comments_for_task(comment.task_id, user_id, Some(comment_id))
             .await?;
-            
-        
-        updated_comment.into_iter().next().ok_or(AppError::InternalServerError)
 
-
+        updated_comment
+            .into_iter()
+            .next()
+            .ok_or(AppError::InternalServerError)
     }
 
     pub async fn delete_comment(
         &self,
         comment_id: ObjectId,
         user_id: ObjectId,
-    ) -> Result<(), AppError>{
-
-        let comment = self.comments_collection()
-            .find_one(doc! { "_id": comment_id }).await
+    ) -> Result<(), AppError> {
+        let comment = self
+            .comments_collection()
+            .find_one(doc! { "_id": comment_id })
+            .await
             .map_err(|e| AppError::DatabaseError(format!("Failed to fetch comment: {}", e)))?
             .ok_or(AppError::NotFound("Comentario no encontrado".to_string()))?;
 
         if comment.user_id != user_id {
-            return Err(AppError::Unauthorized("No tienes permiso para eliminar este comentario".to_string()));
+            return Err(AppError::Unauthorized(
+                "No tienes permiso para eliminar este comentario".to_string(),
+            ));
         }
 
         self.comments_collection()

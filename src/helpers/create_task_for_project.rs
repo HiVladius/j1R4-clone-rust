@@ -1,13 +1,16 @@
-use axum::{body::{Body, to_bytes}, http::{Request, header}};
+use crate::models::task_model::Task;
+use axum::{
+    body::{Body, to_bytes},
+    http::{Request, header},
+};
 use serde_json::json;
 use tower::ServiceExt;
-use crate::models::task_model::Task;
 
 pub async fn create_task_for_project(
-    app: &axum::Router, 
-    token: &str, 
+    app: &axum::Router,
+    token: &str,
     project_id: &str,
-    assignee_id: Option<String>
+    assignee_id: Option<String>,
 ) -> String {
     let mut payload = json!({
         "title": "Test Task",
@@ -36,8 +39,7 @@ pub async fn create_task_for_project(
         .unwrap();
 
     let task: Task =
-        serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
-            .unwrap();
-    
+        serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap()).unwrap();
+
     task.id.unwrap().to_hex()
 }

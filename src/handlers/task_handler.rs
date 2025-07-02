@@ -1,10 +1,10 @@
 use crate::{
     errors::AppError,
     middleware::auth_middleware::AuthenticatedUser,
+    models::task_model::UpdateTaskSchema,
     models::task_model::{CreateTaskSchema, Task},
     services::task_service::TaskService,
     state::AppState,
-    models::task_model::UpdateTaskSchema,
 };
 use axum::{
     Json,
@@ -76,24 +76,19 @@ pub async fn update_task_handler(
         .update_task(task_id, auth_user.id, payload)
         .await?;
 
-
     Ok(Json(update_task))
 }
-
 
 pub async fn delete_task_handler(
     State(app_state): State<Arc<AppState>>,
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(task_id): Path<String>,
-) -> Result<StatusCode, AppError>{
-
+) -> Result<StatusCode, AppError> {
     let task_id = ObjectId::parse_str(&task_id)
         .map_err(|_| AppError::ValidationError("ID de tarea invalido".to_string()))?;
 
     let task_service = TaskService::new(app_state.db.clone(), app_state.ws_tx.clone());
-    task_service
-        .delete_task(task_id, auth_user.id)
-        .await?;
+    task_service.delete_task(task_id, auth_user.id).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

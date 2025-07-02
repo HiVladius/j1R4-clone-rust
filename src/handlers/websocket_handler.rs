@@ -1,23 +1,23 @@
 use axum::{
-    extract::{ws::{Message, WebSocket, WebSocketUpgrade},
-
-    State,},
+    extract::{
+        State,
+        ws::{Message, WebSocket, WebSocketUpgrade},
+    },
     response::IntoResponse,
 };
 
+use crate::state::AppState;
 use futures::{sink::SinkExt, stream::StreamExt};
 use std::sync::Arc;
-use crate::state::AppState;
-
 
 pub async fn websocket_handler(
-   ws: WebSocketUpgrade,
-   State(state): State<Arc<AppState>>, 
-) -> impl IntoResponse  {
-    ws.on_upgrade( |socket| handle_socket(socket, state))
+    ws: WebSocketUpgrade,
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    ws.on_upgrade(|socket| handle_socket(socket, state))
 }
 
-async fn handle_socket(socket: WebSocket, state: Arc<AppState>){
+async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
     let (mut sender, mut receiver) = socket.split();
 
     let mut rx = state.ws_tx.subscribe();
@@ -30,7 +30,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>){
             if sender.send(Message::Text(msg.into())).await.is_err() {
                 tracing::warn!("Error enviando mensaje WebSocket, cerrando conexión");
                 break;
-            } 
+            }
         }
     });
 
@@ -45,7 +45,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>){
                     tracing::info!("Cliente cerró la conexión WebSocket");
                     break;
                 }
-                Ok(Message::Ping(data)) => {
+                Ok(Message::Ping(_data)) => {
                     tracing::debug!("Ping recibido");
                     // Los pings se manejan automáticamente
                 }

@@ -11,7 +11,7 @@ use mongodb::bson::oid::ObjectId;
 use crate::{
     errors::AppError,
     middleware::auth_middleware::AuthenticatedUser,
-    models::project_models::{CreateProjectSchema, Project, AddMemberSchema},
+    models::project_models::{AddMemberSchema, CreateProjectSchema, Project},
     services::project_service::ProjectService,
     state::AppState,
 };
@@ -24,8 +24,7 @@ pub async fn create_project_handler(
     let project_service = ProjectService::new(app_state.db.clone());
     let new_project = project_service
         .create_project(payload, auth_user.id)
-        .await
-        .map_err(|e| AppError::from(e))?;
+        .await?;
 
     Ok((StatusCode::CREATED, Json(new_project)))
 }
@@ -87,14 +86,14 @@ pub async fn add_member_handler(
         .add_member(project_id, auth_user.id, payload)
         .await?;
 
-        Ok(StatusCode::OK)
+    Ok(StatusCode::OK)
 }
 
 pub async fn list_members_handler(
     State(app_state): State<Arc<AppState>>,
     Extension(auth_user): Extension<AuthenticatedUser>,
-    Path(project_id): Path<String>
-) -> Result<Json<Vec<UserData>>, AppError>{
+    Path(project_id): Path<String>,
+) -> Result<Json<Vec<UserData>>, AppError> {
     let project_id = ObjectId::parse_str(&project_id)
         .map_err(|_| AppError::ValidationError("ID de proyecto inválido".to_string()))?;
 
@@ -103,15 +102,14 @@ pub async fn list_members_handler(
         .list_members(project_id, auth_user.id)
         .await?;
 
-    Ok(Json(members))    
+    Ok(Json(members))
 }
-
 
 pub async fn remove_member_handler(
     State(app_state): State<Arc<AppState>>,
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path((project_id, user_id)): Path<(String, String)>,
-)-> Result<StatusCode, AppError>{ 
+) -> Result<StatusCode, AppError> {
     let project_id = ObjectId::parse_str(&project_id)
         .map_err(|_| AppError::ValidationError("ID de proyecto inválido".to_string()))?;
     let user_id = ObjectId::parse_str(&user_id)

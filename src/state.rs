@@ -17,7 +17,11 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(db: Arc<DatabaseState>, config: Arc<Config>, ws_tx: broadcast::Sender<String>) -> Self {
+    pub fn new(
+        db: Arc<DatabaseState>,
+        config: Arc<Config>,
+        ws_tx: broadcast::Sender<String>,
+    ) -> Self {
         Self { db, config, ws_tx }
     }
 }

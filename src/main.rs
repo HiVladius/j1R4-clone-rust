@@ -8,7 +8,7 @@ use jira_clone_backend::config::Config;
 use jira_clone_backend::db::DatabaseState;
 use jira_clone_backend::errors::AppError;
 use jira_clone_backend::router::router::get_app;
-use jira_clone_backend::state::{AppState,};
+use jira_clone_backend::state::AppState;
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
@@ -21,7 +21,7 @@ async fn main() -> Result<(), AppError> {
 
     tracing::info!("Starting Jira Clone Backend...");
 
-    let config = Arc::new(Config::from_env().expect("Error al cargar la configuración"));    // tracing::info!("Configuración cargada: {:?}", config);
+    let config = Arc::new(Config::from_env().expect("Error al cargar la configuración")); // tracing::info!("Configuración cargada: {:?}", config);
 
     let server_address = config.server_address.clone();
 
@@ -45,7 +45,7 @@ async fn main() -> Result<(), AppError> {
     let listener: TcpListener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app.into_make_service())
         .await
-        .map_err(|e| AppError::from(e))?;
+        .map_err(AppError::from)?;
 
     Ok(())
 }
