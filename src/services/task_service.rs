@@ -88,6 +88,18 @@ impl TaskService {
             return Err(AppError::InternalServerError);
         }
 
+        // Emitir mensaje WebSocket para nueva tarea creada
+        let broadcast_message = serde_json::json!({
+            "event_type": "TASK_CREATED",
+            "task": new_task,
+        }).to_string();
+
+        if let Err(e) = self.ws_tx.send(broadcast_message) {
+            tracing::warn!("Error enviando mensaje WebSocket para tarea creada: {}", e);
+        } else {
+            tracing::info!("Mensaje WebSocket enviado para tarea creada: {}", new_task.id.unwrap());
+        }
+
         Ok(new_task)
     }
 
@@ -169,6 +181,14 @@ impl TaskService {
         // No es necesario verificar si es dueño o asignado específicamente
         // Cualquier miembro del proyecto puede actualizar tareas
 
+        // Capturar información sobre los cambios antes de mover los valores
+        let title_changed = schema.title.is_some();
+        let description_changed = schema.description.is_some();
+        let status_changed = schema.status.is_some();
+        let priority_changed = schema.priority.is_some();
+        let assignee_changed = schema.assignee_id.is_some();
+        let previous_status = if status_changed { Some(task.status.clone()) } else { None };
+
         let mut update_doc = doc! {};
 
         if let Some(title) = schema.title {
@@ -205,13 +225,28 @@ impl TaskService {
 
         let updated_task = self.get_task_by_id(task_id, user_id).await?;
         
-        // nueva logica de broadcast
+        // nueva logica de broadcast con información detallada de cambios
         let broadcast_message = serde_json::json!({
             "event_type": "TASK_UPDATED",
             "task": updated_task,
+            "changes": {
+                "status_changed": status_changed,
+                "previous_status": previous_status,
+                "updated_fields": {
+                    "title": title_changed,
+                    "description": description_changed,
+                    "status": status_changed,
+                    "priority": priority_changed,
+                    "assignee_id": assignee_changed
+                }
+            }
         }).to_string();
 
-        let _= self.ws_tx.send(broadcast_message);
+        if let Err(e) = self.ws_tx.send(broadcast_message) {
+            tracing::warn!("Error enviando mensaje WebSocket para tarea actualizada: {}", e);
+        } else {
+            tracing::info!("Mensaje WebSocket enviado para tarea actualizada: {} (status_changed: {})", task_id, status_changed);
+        }
         
         Ok(updated_task)
 
@@ -256,6 +291,18 @@ impl TaskService {
             return Err(AppError::NotFound("No se pudo eliminar la tarea, es posible que ya haya sido eliminada".to_string()));
         }
 
+        // Emitir mensaje WebSocket para tarea eliminada
+        let broadcast_message = serde_json::json!({
+            "event_type": "TASK_DELETED",
+            "task_id": task_id.to_hex(),
+            "project_id": task.project_id.to_hex(),
+        }).to_string();
+
+        if let Err(e) = self.ws_tx.send(broadcast_message) {
+            tracing::warn!("Error enviando mensaje WebSocket para tarea eliminada: {}", e);
+        } else {
+            tracing::info!("Mensaje WebSocket enviado para tarea eliminada: {}", task_id);
+        }
 
         Ok(())
     }

@@ -22,27 +22,54 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>){
 
     let mut rx = state.ws_tx.subscribe();
 
+    tracing::info!("Nueva conexión WebSocket establecida");
+
     let mut send_task = tokio::spawn(async move {
         while let Ok(msg) = rx.recv().await {
-            
+            tracing::debug!("Enviando mensaje WebSocket: {}", msg);
             if sender.send(Message::Text(msg.into())).await.is_err() {
+                tracing::warn!("Error enviando mensaje WebSocket, cerrando conexión");
                 break;
             } 
         }
     });
 
     let mut recv_task = tokio::spawn(async move {
-
-        while let Some(Ok(Message::Close(_))) = receiver.next().await {
-            break;
+        while let Some(msg) = receiver.next().await {
+            match msg {
+                Ok(Message::Text(text)) => {
+                    tracing::debug!("Mensaje recibido del cliente: {}", text);
+                    // Aquí puedes manejar mensajes del cliente si es necesario
+                }
+                Ok(Message::Close(_)) => {
+                    tracing::info!("Cliente cerró la conexión WebSocket");
+                    break;
+                }
+                Ok(Message::Ping(data)) => {
+                    tracing::debug!("Ping recibido");
+                    // Los pings se manejan automáticamente
+                }
+                Ok(Message::Pong(_)) => {
+                    tracing::debug!("Pong recibido");
+                }
+                Err(e) => {
+                    tracing::error!("Error en WebSocket: {}", e);
+                    break;
+                }
+                _ => {}
+            }
         }
     });
 
     tokio::select! {
-        _ = (&mut send_task) => recv_task.abort(),
-        _ = (&mut recv_task) => send_task.abort(),
+        _ = (&mut send_task) => {
+            tracing::info!("Send task terminada, cerrando recv task");
+            recv_task.abort();
+        },
+        _ = (&mut recv_task) => {
+            tracing::info!("Recv task terminada, cerrando send task");
+            send_task.abort();
+        },
     }
     tracing::info!("WebSocket connection closed");
-
-
 }
