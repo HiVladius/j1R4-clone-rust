@@ -13,6 +13,7 @@ pub mod utils {
 pub mod services {
     pub mod auth_service;
     pub mod comment_service;
+    pub mod date_range_service;
     pub mod permission_service;
     pub mod project_service;
     pub mod task_service;
@@ -29,6 +30,7 @@ pub mod models {
 pub mod handlers {
     pub mod auth_handler;
     pub mod comment_handler;
+    pub mod date_range_handler;
     pub mod project_handler;
     pub mod task_handler;
     pub mod websocket_handler;

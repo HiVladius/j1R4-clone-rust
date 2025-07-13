@@ -2,7 +2,8 @@ use crate::{
     errors::AppError,
     middleware::auth_middleware::AuthenticatedUser,
     models::task_model::UpdateTaskSchema,
-    models::task_model::{CreateTaskSchema, Task},
+    models::task_model::{CreateTaskSchema, DateRange, Task},
+    services::date_range_service::DateRangeService,
     services::task_service::TaskService,
     state::AppState,
 };
@@ -12,7 +13,14 @@ use axum::{
     http::StatusCode,
 };
 use mongodb::bson::oid::ObjectId;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct TaskWithDateRange {
+    pub task: Task,
+    pub date_range: Option<DateRange>,
+}
 
 pub async fn create_task_handler(
     State(app_state): State<Arc<AppState>>,
@@ -91,4 +99,23 @@ pub async fn delete_task_handler(
     task_service.delete_task(task_id, auth_user.id).await?;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn get_task_with_date_range_handler(
+    State(app_state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthenticatedUser>,
+    Path(task_id): Path<String>,
+) -> Result<Json<TaskWithDateRange>, AppError> {
+    let task_id = ObjectId::parse_str(&task_id)
+        .map_err(|_| AppError::ValidationError("ID de tarea invalido".to_string()))?;
+
+    let task_service = TaskService::new(app_state.db.clone(), app_state.ws_tx.clone());
+    let date_range_service = DateRangeService::new(app_state.db.clone());
+
+    let task = task_service.get_task_by_id(task_id, auth_user.id).await?;
+    let date_range = date_range_service
+        .get_task_date_range(task_id, auth_user.id)
+        .await?;
+
+    Ok(Json(TaskWithDateRange { task, date_range }))
 }
