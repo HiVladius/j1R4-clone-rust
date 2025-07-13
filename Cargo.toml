@@ -32,3 +32,5 @@ futures = "0.3.31"
 tower = "0.5.2"
 tower-http = { version = "0.6.6", features = ["cors"] }
 hyper = "1.6.0"
+shuttle-runtime = "0.56.0"
+shuttle-axum = "0.56.0"

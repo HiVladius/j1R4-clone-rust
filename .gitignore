@@ -9,3 +9,5 @@ enviroment.json
 jira-clone-collection.json
 test-data.json
 *.html
+.shuttle*
+Secrets*.toml

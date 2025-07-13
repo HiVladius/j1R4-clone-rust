@@ -50,9 +50,6 @@ impl TaskService {
             .map_err(|e| AppError::ValidationError(e.to_string()))?;
 
         // Validar fechas
-        schema
-            .validate_dates()
-            .map_err(|e| AppError::ValidationError(e))?;
 
         PermissionService::new(self.db_state.get_db())
             .can_access_project(project_id, reporter_id)
@@ -65,13 +62,6 @@ impl TaskService {
             .map_err(|_| {
                 AppError::ValidationError("El ID del asignado no es válido".to_string())
             })?;
-
-        let has_due_date = schema.has_due_date.unwrap_or(false);
-        let end_date = if has_due_date {
-            schema.end_date
-        } else {
-            None
-        };
 
         // Usar fechas proporcionadas o generar automáticamente si no se proporcionan
         let now = Utc::now();
@@ -89,9 +79,6 @@ impl TaskService {
             reporter_id,
             created_at,
             updated_at,
-            start_date: schema.start_date,
-            end_date,
-            has_due_date,
         };
 
         let result = self
@@ -198,9 +185,6 @@ impl TaskService {
             .ok_or_else(|| AppError::NotFound("Tarea no encontrada".to_string()))?;
 
         // Validar fechas con el contexto de la tarea actual
-        schema
-            .validate_dates(&task)
-            .map_err(|e| AppError::ValidationError(e))?;
 
         // Verificar si el usuario puede acceder al proyecto (es dueño o miembro)
         PermissionService::new(self.db_state.get_db())
@@ -216,9 +200,7 @@ impl TaskService {
         let status_changed = schema.status.is_some();
         let priority_changed = schema.priority.is_some();
         let assignee_changed = schema.assignee_id.is_some();
-        let start_date_changed = schema.start_date.is_some();
-        let end_date_changed = schema.end_date.is_some();
-        let has_due_date_changed = schema.has_due_date.is_some();
+
         let previous_status = if status_changed {
             Some(task.status.clone())
         } else {
@@ -249,34 +231,10 @@ impl TaskService {
             update_doc.insert("assignee_id", assignee_id);
         }
 
-        // Actualizar campos de fecha
-        if let Some(start_date) = schema.start_date {
-            update_doc.insert("start_date", DateTime::from_chrono(start_date));
-        }
-        
-        if let Some(end_date_opt) = schema.end_date {
-            match end_date_opt {
-                Some(end_date) => {
-                    update_doc.insert("end_date", DateTime::from_chrono(end_date));
-                }
-                None => {
-                    update_doc.insert("end_date", None::<DateTime>);
-                }
-            }
-        }
-
-        if let Some(has_due_date) = schema.has_due_date {
-            update_doc.insert("has_due_date", has_due_date);
-            // Si se desactiva has_due_date, también limpiar end_date
-            if !has_due_date {
-                update_doc.insert("end_date", None::<DateTime>);
-            }
-        }
-
         if update_doc.is_empty() {
             return Ok(task);
         }
-        
+
         // Usar fecha proporcionada o generar automáticamente
         let updated_at = schema.updated_at.unwrap_or_else(|| Utc::now());
         update_doc.insert("updated_at", DateTime::from_chrono(updated_at));
@@ -301,9 +259,6 @@ impl TaskService {
                     "status": status_changed,
                     "priority": priority_changed,
                     "assignee_id": assignee_changed,
-                    "start_date": start_date_changed,
-                    "end_date": end_date_changed,
-                    "has_due_date": has_due_date_changed
                 }
             }
         })
