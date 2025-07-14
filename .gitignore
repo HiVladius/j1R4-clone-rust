@@ -11,3 +11,7 @@ test-data.json
 *.html
 .shuttle*
 Secrets*.toml
+
+
+# docks
+docs
