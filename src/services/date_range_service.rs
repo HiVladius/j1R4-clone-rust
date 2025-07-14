@@ -5,11 +5,11 @@ use mongodb::{
 use std::sync::Arc;
 use validator::Validate;
 
+use crate::models::task_model::Task;
 use crate::{
     db::DatabaseState, errors::AppError, models::task_model::DateRange,
     services::permission_service::PermissionService,
 };
-use crate::models::task_model::Task;
 
 pub struct DateRangeService {
     db_state: Arc<DatabaseState>,
@@ -38,10 +38,7 @@ impl DateRangeService {
             .map_err(|e| AppError::ValidationError(e.to_string()))?;
 
         // Verificar que el usuario tiene permisos para acceder a la tarea
-        let task_collection = self
-            .db_state
-            .get_db()
-            .collection::<Task>("tasks");
+        let task_collection = self.db_state.get_db().collection::<Task>("tasks");
 
         let task = task_collection
             .find_one(doc! {"_id": task_id})
@@ -92,10 +89,7 @@ impl DateRangeService {
         user_id: ObjectId,
     ) -> Result<Option<DateRange>, AppError> {
         // Verificar que el usuario tiene permisos para acceder a la tarea
-        let task_collection = self
-            .db_state
-            .get_db()
-            .collection::<Task>("tasks");
+        let task_collection = self.db_state.get_db().collection::<Task>("tasks");
 
         let task = task_collection
             .find_one(doc! {"_id": task_id})
@@ -130,10 +124,7 @@ impl DateRangeService {
             .await?;
 
         // Obtener todas las tareas del proyecto
-        let task_collection = self
-            .db_state
-            .get_db()
-            .collection::<Task>("tasks");
+        let task_collection = self.db_state.get_db().collection::<Task>("tasks");
         let mut cursor = task_collection
             .find(doc! {"project_id": project_id})
             .await
@@ -176,10 +167,7 @@ impl DateRangeService {
         user_id: ObjectId,
     ) -> Result<(), AppError> {
         // Verificar que el usuario tiene permisos para acceder a la tarea
-        let task_collection = self
-            .db_state
-            .get_db()
-            .collection::<Task>("tasks");
+        let task_collection = self.db_state.get_db().collection::<Task>("tasks");
 
         let task = task_collection
             .find_one(doc! {"_id": task_id})
@@ -209,10 +197,7 @@ impl DateRangeService {
         user_id: ObjectId,
     ) -> Result<DateRange, AppError> {
         // Verificar que el usuario tiene permisos para acceder a la tarea
-        let task_collection = self
-            .db_state
-            .get_db()
-            .collection::<Task>("tasks");
+        let task_collection = self.db_state.get_db().collection::<Task>("tasks");
 
         let task = task_collection
             .find_one(doc! {"_id": task_id})
@@ -233,30 +218,31 @@ impl DateRangeService {
             .map_err(|_| AppError::InternalServerError)?;
 
         if existing_range.is_none() {
-            return Err(AppError::NotFound("Rango de fechas no encontrado para esta tarea".to_string()));
+            return Err(AppError::NotFound(
+                "Rango de fechas no encontrado para esta tarea".to_string(),
+            ));
         }
 
         // Construir el documento de actualización
         let mut update_doc = doc! {};
-        
+
         if let Some(start_date) = update_data.start_date {
             update_doc.insert("start_date", start_date);
         }
-        
+
         if let Some(end_date) = update_data.end_date {
             update_doc.insert("end_date", end_date);
         }
 
         if update_doc.is_empty() {
-            return Err(AppError::ValidationError("No se proporcionaron campos para actualizar".to_string()));
+            return Err(AppError::ValidationError(
+                "No se proporcionaron campos para actualizar".to_string(),
+            ));
         }
 
         // Actualizar el documento
         self.date_range_collection()
-            .update_one(
-                doc! {"task_id": task_id},
-                doc! {"$set": update_doc}
-            )
+            .update_one(doc! {"task_id": task_id}, doc! {"$set": update_doc})
             .await
             .map_err(|_| AppError::InternalServerError)?;
 

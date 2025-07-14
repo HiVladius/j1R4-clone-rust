@@ -58,3 +58,52 @@ pub struct AddMemberSchema {
     #[validate(email(message = "El correo electrónico no es valido"))]
     pub email: String,
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum UserRole {
+    #[serde(rename = "owner")]
+    Owner,
+    #[serde(rename = "member")]
+    Member,
+}
+
+// Proyecto con información del rol del usuario autenticado
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ProjectWithRole {
+    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
+    pub id: Option<ObjectId>,
+    pub name: String,
+    #[serde(rename = "key")]
+    pub project_key: String,
+    pub description: Option<String>,
+    pub owner_id: ObjectId,
+    #[serde(default)]
+    pub members: Vec<ObjectId>,
+    #[serde(with = "bson::serde_helpers::chrono_datetime_as_bson_datetime")]
+    pub created_at: DateTime<Utc>,
+    #[serde(with = "bson::serde_helpers::chrono_datetime_as_bson_datetime")]
+    pub updated_at: DateTime<Utc>,
+    pub user_role: UserRole,
+}
+
+impl ProjectWithRole {
+    pub fn from_project(project: Project, user_id: ObjectId) -> Self {
+        let user_role = if project.owner_id == user_id {
+            UserRole::Owner
+        } else {
+            UserRole::Member
+        };
+
+        Self {
+            id: project.id,
+            name: project.name,
+            project_key: project.project_key,
+            description: project.description,
+            owner_id: project.owner_id,
+            members: project.members,
+            created_at: project.created_at,
+            updated_at: project.updated_at,
+            user_role,
+        }
+    }
+}
