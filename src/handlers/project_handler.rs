@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::models::{project_models::UpdateProjectSchema, user_model::UserData};
+use crate::models::{project_models::{UpdateProjectSchema, ProjectWithRole}, user_model::UserData};
 use axum::{
     Json,
     extract::{Extension, Path, State},
@@ -32,11 +32,11 @@ pub async fn create_project_handler(
 pub async fn get_project_handler(
     State(app_state): State<Arc<AppState>>,
     Extension(auth_user): Extension<AuthenticatedUser>,
-) -> Result<Json<Vec<Project>>, AppError> {
+) -> Result<Json<Vec<ProjectWithRole>>, AppError> {
     let project_service = ProjectService::new(app_state.db.clone());
-    let project = project_service.get_projects_for_user(auth_user.id).await?;
+    let projects = project_service.get_projects_with_role_for_user(auth_user.id).await?;
 
-    Ok(Json(project))
+    Ok(Json(projects))
 }
 
 pub async fn update_project_handler(

@@ -13,7 +13,7 @@ use crate::{
     db::DatabaseState,
     errors::AppError,
     models::{
-        project_models::{AddMemberSchema, CreateProjectSchema, Project, UpdateProjectSchema},
+        project_models::{AddMemberSchema, CreateProjectSchema, Project, UpdateProjectSchema, ProjectWithRole},
         user_model::{User, UserData},
     },
     services::permission_service::PermissionService,
@@ -81,7 +81,13 @@ impl ProjectService {
     }
 
     pub async fn get_projects_for_user(&self, user_id: ObjectId) -> Result<Vec<Project>, AppError> {
-        let filter = doc! { "owner_id": user_id };
+        // Buscar proyectos donde el usuario es propietario O miembro
+        let filter = doc! { 
+            "$or": [
+                { "owner_id": user_id },
+                { "members": user_id }
+            ]
+        };
         // let options = FindOptions::builder()
         // .sort(doc! { "created_at": -1 })
         // .build();
@@ -98,6 +104,19 @@ impl ProjectService {
 
         Ok(projects)
     }
+
+    // Nueva función que incluye información del rol del usuario
+    pub async fn get_projects_with_role_for_user(&self, user_id: ObjectId) -> Result<Vec<ProjectWithRole>, AppError> {
+        let projects = self.get_projects_for_user(user_id).await?;
+        
+        let projects_with_role = projects
+            .into_iter()
+            .map(|project| ProjectWithRole::from_project(project, user_id))
+            .collect();
+
+        Ok(projects_with_role)
+    }
+    
     pub async fn update_project(
         &self,
         project_id: ObjectId,

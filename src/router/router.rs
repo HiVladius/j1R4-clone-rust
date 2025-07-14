@@ -7,7 +7,8 @@ use crate::{
         },
         date_range_handler::{
             delete_task_date_range_handler, get_project_date_ranges_handler,
-            get_task_date_range_handler, set_task_date_range_handler, update_task_date_range_handler,
+            get_task_date_range_handler, set_task_date_range_handler,
+            update_task_date_range_handler,
         },
         project_handler::{
             add_member_handler, create_project_handler, delete_project_handler,
@@ -65,27 +66,55 @@ pub fn get_app(app_state: Arc<AppState>) -> Router {
         .route("/projects", get(get_project_handler))
         .route("/projects/{project_id}", patch(update_project_handler))
         .route("/projects/{project_id}", delete(delete_project_handler))
-        .route( "/projects/{project_id}/tasks",  get(get_task_for_project_handler))
+        .route(
+            "/projects/{project_id}/tasks",
+            get(get_task_for_project_handler),
+        )
         .route("/projects/{project_id}/tasks", post(create_task_handler))
         .route("/tasks/{task_id}", get(get_task_by_id_handler))
-        .route("/tasks/{task_id}/full", get(get_task_with_date_range_handler))
+        .route(
+            "/tasks/{task_id}/full",
+            get(get_task_with_date_range_handler),
+        )
         .route("/tasks/{task_id}", patch(update_task_handler))
         .route("/tasks/{task_id}", delete(delete_task_handler))
         .route("/projects/{project_id}/members", post(add_member_handler))
         .route("/projects/{project_id}/members", get(list_members_handler))
-        .route("/projects/{project_id}/members/{member_id}",delete(remove_member_handler))
+        .route(
+            "/projects/{project_id}/members/{member_id}",
+            delete(remove_member_handler),
+        )
         .route("/tasks/{task_id}/comments", post(create_comment_handler))
         .route("/tasks/{task_id}/comments", get(get_comments_handler))
-        .route("/tasks/{task_id}/comments/{comment_id}", patch(update_comment_handler))
-        .route("/tasks/{task_id}/comments/{comment_id}", delete(delete_comment_handler))
-        
+        .route(
+            "/tasks/{task_id}/comments/{comment_id}",
+            patch(update_comment_handler),
+        )
+        .route(
+            "/tasks/{task_id}/comments/{comment_id}",
+            delete(delete_comment_handler),
+        )
         // Endpoints para rangos de fechas
-        .route("/tasks/{task_id}/date-range", post(set_task_date_range_handler))
-        .route("/tasks/{task_id}/date-range", get(get_task_date_range_handler))
-        .route("/tasks/{task_id}/date-range", patch(update_task_date_range_handler))
-        .route("/tasks/{task_id}/date-range", delete(delete_task_date_range_handler))
-        .route("/projects/{project_id}/date-ranges", get(get_project_date_ranges_handler))
-        
+        .route(
+            "/tasks/{task_id}/date-range",
+            post(set_task_date_range_handler),
+        )
+        .route(
+            "/tasks/{task_id}/date-range",
+            get(get_task_date_range_handler),
+        )
+        .route(
+            "/tasks/{task_id}/date-range",
+            patch(update_task_date_range_handler),
+        )
+        .route(
+            "/tasks/{task_id}/date-range",
+            delete(delete_task_date_range_handler),
+        )
+        .route(
+            "/projects/{project_id}/date-ranges",
+            get(get_project_date_ranges_handler),
+        )
         .layer(auth_middleware);
 
     let auth_routes = Router::new()

@@ -105,7 +105,6 @@ impl IntoResponse for AppError {
 // Si usas AppError:
 pub type Result<T, E = AppError> = std::result::Result<T, E>;
 
-
 impl From<AppError> for shuttle_runtime::Error {
     fn from(err: AppError) -> Self {
         shuttle_runtime::Error::Custom(anyhow::Error::from(err))

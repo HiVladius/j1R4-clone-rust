@@ -23,7 +23,7 @@ pub async fn auth_guard(
     mut req: Request<Body>,
     next: Next,
 ) -> Result<Response<Body>, AppError> {
-    tracing::debug!("Ejecutando middleware de autenticación");
+    // tracing::debug!("Ejecutando middleware de autenticación");
 
     // //* 1.- Extraer el token del encabezado 'Authorization'
 
@@ -33,7 +33,7 @@ pub async fn auth_guard(
         .and_then(|value| value.to_str().ok())
         .and_then(|auth_value| auth_value.strip_prefix("Bearer "));
     let token = token.ok_or_else(|| {
-        tracing::error!("Token de autorización no encontrado");
+        // tracing::error!("Token de autorización no encontrado");
         AppError::Unauthorized("Token de autorización no encontrado".to_string())
     })?;
 
@@ -59,10 +59,10 @@ pub async fn auth_guard(
     };
 
     req.extensions_mut().insert(authenticated_user);
-    tracing::debug!(
-        "Usuario autenticado: {:?}",
-        req.extensions().get::<AuthenticatedUser>()
-    );
+    // tracing::debug!(
+    //     "Usuario autenticado: {:?}",
+    //     req.extensions().get::<AuthenticatedUser>()
+    // );
 
     Ok(next.run(req).await)
 }

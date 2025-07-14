@@ -1,6 +1,6 @@
 use serde::Deserialize;
-use std::env;
 use shuttle_runtime::SecretStore;
+use std::env;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Config {
@@ -38,8 +38,12 @@ impl Config {
             .collect();
 
         Ok(Self {
-            database_url: secrets.get("DATABASE_URL").ok_or(env::VarError::NotPresent)?,
-            database_name: secrets.get("DATABASE_NAME").ok_or(env::VarError::NotPresent)?,
+            database_url: secrets
+                .get("DATABASE_URL")
+                .ok_or(env::VarError::NotPresent)?,
+            database_name: secrets
+                .get("DATABASE_NAME")
+                .ok_or(env::VarError::NotPresent)?,
             jwt_secret: secrets.get("JWT_SECRET").ok_or(env::VarError::NotPresent)?,
             server_address: secrets
                 .get("SERVER_ADDRESS")

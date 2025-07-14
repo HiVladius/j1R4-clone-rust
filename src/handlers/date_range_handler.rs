@@ -103,7 +103,7 @@ pub async fn update_task_date_range_handler(
         .map_err(|_| AppError::ValidationError("ID de tarea inválido".to_string()))?;
 
     let date_range_service = DateRangeService::new(app_state.db.clone());
-    
+
     let updated_date_range = date_range_service
         .update_task_date_range(task_id, update_data, auth_user.id)
         .await?;
