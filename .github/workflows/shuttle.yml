@@ -13,6 +13,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      - name: Verify API key is set
+        run: |
+          if [ -z "$SHUTTLE_API_KEY" ]; then
+            echo "❌ SHUTTLE_API_KEY is empty or not set"
+            echo "Please check your GitHub repository secrets configuration"
+            exit 1
+          else
+            echo "✅ SHUTTLE_API_KEY is set (length: ${#SHUTTLE_API_KEY})"
+          fi
+        env:
+          SHUTTLE_API_KEY: ${{ secrets.SHUTTLE_API_KEY }}
+      
       - name: Deploy to Shuttle
         uses: shuttle-hq/deploy-action@v2
         with:
