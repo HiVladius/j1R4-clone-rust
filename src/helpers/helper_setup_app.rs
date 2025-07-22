@@ -27,11 +27,12 @@ use serde_json::json;
 use std::sync::Arc;
 
 pub async fn setup_app() -> Router {
+    
     dotenv().ok();
     // Use the existing database from config instead of creating a new one
     let config = Arc::new(Config::from_env().expect("Fallo al cargar config de prueba"));
 
-    // Use a fixed database name for tests
+    // Use a fixed database name for tests - this works because we use a mutex
     let db_state = Arc::new(
         DatabaseState::init(&config.database_url, "test_db")
             .await

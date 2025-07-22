@@ -22,13 +22,13 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
 
     let mut rx = state.ws_tx.subscribe();
 
-    tracing::info!("Nueva conexión WebSocket establecida");
+    // tracing::info!("Nueva conexión WebSocket establecida");
 
     let mut send_task = tokio::spawn(async move {
         while let Ok(msg) = rx.recv().await {
-            tracing::debug!("Enviando mensaje WebSocket: {}", msg);
+            // tracing::debug!("Enviando mensaje WebSocket: {}", msg);
             if sender.send(Message::Text(msg.into())).await.is_err() {
-                tracing::warn!("Error enviando mensaje WebSocket, cerrando conexión");
+                // tracing::warn!("Error enviando mensaje WebSocket, cerrando conexión");
                 break;
             }
         }
@@ -63,13 +63,13 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
 
     tokio::select! {
         _ = (&mut send_task) => {
-            tracing::info!("Send task terminada, cerrando recv task");
+            // tracing::info!("Send task terminada, cerrando recv task");
             recv_task.abort();
         },
         _ = (&mut recv_task) => {
-            tracing::info!("Recv task terminada, cerrando send task");
+            // tracing::info!("Recv task terminada, cerrando send task");
             send_task.abort();
         },
     }
-    tracing::info!("WebSocket connection closed");
+    // tracing::info!("WebSocket connection closed");
 }

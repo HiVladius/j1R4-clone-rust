@@ -17,6 +17,7 @@ pub mod services {
     pub mod permission_service;
     pub mod project_service;
     pub mod task_service;
+    
 }
 
 //Modelos para la base de datos
@@ -34,6 +35,7 @@ pub mod handlers {
     pub mod project_handler;
     pub mod task_handler;
     pub mod websocket_handler;
+    
 }
 
 pub mod middleware {
