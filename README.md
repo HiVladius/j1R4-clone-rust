@@ -14,6 +14,11 @@ DATABASE_NAME=jira_clone
 JWT_SECRET=your-super-secret-jwt-key-here
 SERVER_ADDRESS=127.0.0.1:8000
 CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173
+
+# Configuración de Google Cloud Storage (opcional para desarrollo)
+GCS_BUCKET_NAME=tu-bucket-nombre
+GCS_PROJECT_ID=tu-proyecto-id
+GOOGLE_APPLICATION_CREDENTIALS=/ruta/a/credenciales.json
 ```
 
 ### CORS Configuration
@@ -57,7 +62,16 @@ El servidor estará disponible en `http://127.0.0.1:8000`
 - **Proyectos**: `/api/projects`
 - **Tareas**: `/api/tasks`
 - **Comentarios**: `/api/tasks/{task_id}/comments`
+- **Imágenes**: `/api/images` (subida, descarga, gestión)
+- **Fechas**: `/api/tasks/{task_id}/date-range`
 - **WebSocket**: `/ws`
+
+### Documentación Detallada
+
+Consulta la documentación específica en la carpeta `/docs`:
+- **Imágenes**: [docs/IMAGES_ENDPOINTS_DOCS.md](docs/IMAGES_ENDPOINTS_DOCS.md)
+- **Fechas**: [docs/FECHA_ENDPOINTS_DOCS.md](docs/FECHA_ENDPOINTS_DOCS.md)
+- **Deployment**: [docs/SHUTTLE_DEPLOYMENT_GUIDE.md](docs/SHUTTLE_DEPLOYMENT_GUIDE.md)
 
 ### Desarrollo
 
@@ -72,5 +86,11 @@ npm start  # o yarn dev, etc.
 ### Pruebas
 
 ```bash
-cargo test
+# Ejecutar todos los tests (recomendado con un solo hilo)
+cargo test -- --test-threads=1
+
+# Ejecutar solo tests específicos
+cargo test simple_image_upload_test -- --nocapture
 ```
+
+**Nota**: Los tests de imágenes no requieren configuración de Google Cloud Storage real, están diseñados para funcionar en cualquier entorno de CI/CD.

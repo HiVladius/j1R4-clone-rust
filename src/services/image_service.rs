@@ -24,7 +24,6 @@ use crate::{
 
 #[derive(Clone)]
 pub struct ImageService {
-    db: Arc<DatabaseState>,
     collection: Collection<Image>,
     gcs_client: Client,
     config: Arc<Config>,
@@ -34,23 +33,45 @@ impl ImageService {
     pub async fn new(db: Arc<DatabaseState>, config: Arc<Config>) -> Result<Self, AppError> {
         let collection = db.db.collection::<Image>("images");
         
-        // Configurar el cliente de Google Cloud Storage
-        let client_config = ClientConfig::default()
-            .with_auth()
-            .await
-            .map_err(|e| {
-                tracing::error!("Error configurando GCS: {}", e);
-                AppError::InternalServerError
-            })?;
-        
-        let gcs_client = Client::new(client_config);
+        // En modo test, no creamos cliente GCS real
+        let gcs_client = if cfg!(test) {
+            // Para tests, devolvemos un error inmediatamente para evitar autenticación
+            return Err(AppError::InternalServerError);
+        } else {
+            // Para producción, intentamos crear el cliente con autenticación
+            match Self::create_gcs_client().await {
+                Ok(client) => client,
+                Err(e) => {
+                    tracing::error!("Error configurando GCS: {}", e);
+                    return Err(AppError::InternalServerError);
+                }
+            }
+        };
 
         Ok(Self {
-            db,
             collection,
             gcs_client,
             config,
         })
+    }
+
+    #[cfg(test)]
+    pub fn new_mock(db: Arc<DatabaseState>, config: Arc<Config>) -> Self {
+        let collection = db.db.collection::<Image>("images");
+        // Para tests, creamos un cliente con configuración por defecto que no se usará
+        let gcs_client = Client::new(ClientConfig::default());
+        Self {
+            collection,
+            gcs_client,
+            config,
+        }
+    }
+
+    async fn create_gcs_client() -> Result<Client, Box<dyn std::error::Error + Send + Sync>> {
+        let client_config = ClientConfig::default()
+            .with_auth()
+            .await?;
+        Ok(Client::new(client_config))
     }
 
     pub async fn upload_image(
@@ -61,40 +82,56 @@ impl ImageService {
         user_id: ObjectId,
         project_id: Option<ObjectId>,
         task_id: Option<ObjectId>,
+        custom_name: Option<String>, // Nuevo parámetro para nombre personalizado
+        folder: Option<String>,      // Nuevo parámetro para carpeta
     ) -> Result<ImageResponse, AppError> {
         let file_size = file_data.len() as u64;
         
-        // Generar un nombre único para el archivo
+        // Generar nombre del archivo (personalizado o UUID)
         let file_extension = filename
             .split('.')
-            .last()
+            .next_back()
             .unwrap_or("bin");
-        let unique_filename = format!("{}.{}", Uuid::new_v4(), file_extension);
+            
+        let unique_filename = if let Some(custom) = custom_name {
+            // Si se proporciona nombre personalizado, usarlo
+            format!("{}.{}", custom, file_extension)
+        } else {
+            // Si no, usar UUID como antes
+            format!("{}.{}", Uuid::new_v4(), file_extension)
+        };
         
-        // Crear el path en GCS
-        let gcs_object_name = format!("images/{}", unique_filename);
+        // Crear el path en GCS con carpeta dinámica
+        let folder_name = folder.unwrap_or_else(|| "avatar".to_string());
+        let gcs_object_name = format!("{}/{}", folder_name, unique_filename);
         
         // Subir el archivo a Google Cloud Storage
-        let upload_type = UploadType::Simple(Media::new(gcs_object_name.clone()));
-        let upload_request = UploadObjectRequest {
-            bucket: self.config.gcs_bucket_name.clone(),
-            ..Default::default()
-        };
+        if !cfg!(test) {
+            let upload_type = UploadType::Simple(Media::new(gcs_object_name.clone()));
+            let upload_request = UploadObjectRequest {
+                bucket: self.config.gcs_bucket_name.clone(),
+                ..Default::default()
+            };
 
-        self.gcs_client
-            .upload_object(&upload_request, file_data, &upload_type)
-            .await
-            .map_err(|e| {
-                tracing::error!("Error subiendo archivo a GCS: {}", e);
-                AppError::InternalServerError
-            })?;
+            self.gcs_client
+                .upload_object(&upload_request, file_data, &upload_type)
+                .await
+                .map_err(|e| {
+                    tracing::error!("Error subiendo archivo a GCS: {}", e);
+                    AppError::InternalServerError
+                })?;
+        }
 
         // Crear la URL pública del archivo
-        let gcs_url = format!(
-            "https://storage.googleapis.com/{}/{}",
-            self.config.gcs_bucket_name,
-            gcs_object_name
-        );
+        let gcs_url = if cfg!(test) {
+            format!("https://test-storage.example.com/{}", gcs_object_name)
+        } else {
+            format!(
+                "https://storage.googleapis.com/{}/{}",
+                self.config.gcs_bucket_name,
+                gcs_object_name
+            )
+        };
 
         // Crear el documento de imagen en la base de datos
         let now = Utc::now();
@@ -145,6 +182,11 @@ impl ImageService {
             .await
             .map_err(|e| AppError::DatabaseError(format!("Error buscando imagen: {}", e)))?
             .ok_or_else(|| AppError::NotFound("Imagen no encontrada".to_string()))?;
+
+        // En modo test, retornamos datos mock
+        if cfg!(test) {
+            return Ok(b"test image data".to_vec());
+        }
 
         // Descargar el archivo de Google Cloud Storage
         let get_request = GetObjectRequest {
@@ -230,19 +272,21 @@ impl ImageService {
         }
 
         // Eliminar el archivo de Google Cloud Storage
-        let delete_request = DeleteObjectRequest {
-            bucket: image.gcs_bucket,
-            object: image.gcs_object_name,
-            ..Default::default()
-        };
+        if !cfg!(test) {
+            let delete_request = DeleteObjectRequest {
+                bucket: image.gcs_bucket,
+                object: image.gcs_object_name,
+                ..Default::default()
+            };
 
-        self.gcs_client
-            .delete_object(&delete_request)
-            .await
-            .map_err(|e| {
-                tracing::error!("Error eliminando archivo de GCS: {}", e);
-                AppError::InternalServerError
-            })?;
+            self.gcs_client
+                .delete_object(&delete_request)
+                .await
+                .map_err(|e| {
+                    tracing::error!("Error eliminando archivo de GCS: {}", e);
+                    AppError::InternalServerError
+                })?;
+        }
 
         // Eliminar el documento de la base de datos
         self.collection

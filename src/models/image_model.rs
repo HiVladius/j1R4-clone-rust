@@ -26,6 +26,8 @@ pub struct Image {
 pub struct ImageUploadQuery {
     pub project_id: Option<String>,
     pub task_id: Option<String>,
+    pub custom_name: Option<String>, // Nombre personalizado para el archivo
+    pub folder: Option<String>,      // Carpeta donde almacenar (avatar, images, files, etc.)
 }
 
 #[derive(Debug, Serialize)]

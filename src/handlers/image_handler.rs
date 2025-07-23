@@ -82,7 +82,16 @@ pub async fn upload_image_handler(
     }
 
     let image = image_service
-        .upload_image(file_data, filename, content_type, auth_user.id, project_id, task_id)
+        .upload_image(
+            file_data, 
+            filename, 
+            content_type, 
+            auth_user.id, 
+            project_id, 
+            task_id, 
+            query_params.custom_name,
+            query_params.folder
+        )
         .await?;
 
     Ok((StatusCode::CREATED, Json(image)))
