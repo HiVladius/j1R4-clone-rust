@@ -9,6 +9,9 @@ pub struct Config {
     pub jwt_secret: String,
     pub server_address: String,
     pub cors_origins: Vec<String>,
+    pub gcs_bucket_name: String,
+    pub gcs_project_id: String,
+    pub google_application_credentials: Option<String>,
 }
 
 impl Config {
@@ -26,6 +29,9 @@ impl Config {
             server_address: env::var("SERVER_ADDRESS")
                 .unwrap_or_else(|_| "127.0.0.1:8000".to_string()),
             cors_origins,
+            gcs_bucket_name: env::var("GCS_BUCKET_NAME")?,
+            gcs_project_id: env::var("GCS_PROJECT_ID")?,
+            google_application_credentials: env::var("GOOGLE_APPLICATION_CREDENTIALS").ok(),
         })
     }
 
@@ -49,6 +55,9 @@ impl Config {
                 .get("SERVER_ADDRESS")
                 .unwrap_or_else(|| "127.0.0.1:8000".to_string()),
             cors_origins,
+            gcs_bucket_name: secrets.get("GCS_BUCKET_NAME").ok_or(env::VarError::NotPresent)?,
+            gcs_project_id: secrets.get("GCS_PROJECT_ID").ok_or(env::VarError::NotPresent)?,
+            google_application_credentials: secrets.get("GOOGLE_APPLICATION_CREDENTIALS"),
         })
     }
 }

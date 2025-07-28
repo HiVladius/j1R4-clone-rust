@@ -10,6 +10,11 @@ use crate::{
             get_task_date_range_handler, set_task_date_range_handler,
             update_task_date_range_handler,
         },
+        image_handler::{
+            delete_image_handler, download_image_handler, get_image_info_handler,
+            list_project_images_handler, list_task_images_handler, list_user_images_handler,
+            update_image_handler, upload_image_handler,
+        },
         project_handler::{
             add_member_handler, create_project_handler, delete_project_handler,
             get_project_handler, list_members_handler, remove_member_handler,
@@ -50,6 +55,7 @@ pub fn get_app(app_state: Arc<AppState>) -> Router {
             Method::GET,
             Method::POST,
             Method::PATCH,
+            Method::PUT,
             Method::DELETE,
             Method::OPTIONS,
         ])
@@ -115,6 +121,15 @@ pub fn get_app(app_state: Arc<AppState>) -> Router {
             "/projects/{project_id}/date-ranges",
             get(get_project_date_ranges_handler),
         )
+        // Endpoints para imágenes
+        .route("/images", post(upload_image_handler))
+        .route("/images", get(list_user_images_handler))
+        .route("/images/{image_id}", get(get_image_info_handler))
+        .route("/images/{image_id}/download", get(download_image_handler))
+        .route("/images/{image_id}", patch(update_image_handler))
+        .route("/images/{image_id}", delete(delete_image_handler))
+        .route("/projects/{project_id}/images", get(list_project_images_handler))
+        .route("/tasks/{task_id}/images", get(list_task_images_handler))
         .layer(auth_middleware);
 
     let auth_routes = Router::new()

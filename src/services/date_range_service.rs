@@ -58,7 +58,7 @@ impl DateRangeService {
             .await
             .map_err(|_| AppError::InternalServerError)?;
 
-        if let Some(_) = existing_range {
+        if existing_range.is_some() {
             // Actualizar el rango existente
             let update_doc = doc! {
                 "$set": {

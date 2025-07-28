@@ -27,11 +27,25 @@ use serde_json::json;
 use std::sync::Arc;
 
 pub async fn setup_app() -> Router {
+    
     dotenv().ok();
-    // Use the existing database from config instead of creating a new one
-    let config = Arc::new(Config::from_env().expect("Fallo al cargar config de prueba"));
+    
+    // Configuración específica para tests con valores por defecto para GCS
+    let config = Arc::new(Config {
+        database_url: std::env::var("DATABASE_URL")
+            .unwrap_or_else(|_| "mongodb://localhost:27017".to_string()),
+        database_name: std::env::var("DATABASE_NAME")
+            .unwrap_or_else(|_| "test_db".to_string()),
+        jwt_secret: std::env::var("JWT_SECRET")
+            .unwrap_or_else(|_| "test_jwt_secret_key_for_development_only".to_string()),
+        server_address: "127.0.0.1:8000".to_string(),
+        cors_origins: vec!["http://localhost:3000".to_string()],
+        gcs_bucket_name: "test-bucket".to_string(),
+        gcs_project_id: "test-project".to_string(),
+        google_application_credentials: None,
+    });
 
-    // Use a fixed database name for tests
+    // Use a fixed database name for tests - this works because we use a mutex
     let db_state = Arc::new(
         DatabaseState::init(&config.database_url, "test_db")
             .await

@@ -236,7 +236,7 @@ impl TaskService {
         }
 
         // Usar fecha proporcionada o generar automáticamente
-        let updated_at = schema.updated_at.unwrap_or_else(|| Utc::now());
+        let updated_at = schema.updated_at.unwrap_or_else(Utc::now);
         update_doc.insert("updated_at", DateTime::from_chrono(updated_at));
 
         self.task_collection()

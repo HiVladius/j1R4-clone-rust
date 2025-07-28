@@ -1286,6 +1286,7 @@ dependencies = [
  "google-cloud-storage",
  "hyper",
  "jsonwebtoken",
+ "mime_guess",
  "mongodb",
  "once_cell",
  "regex",
