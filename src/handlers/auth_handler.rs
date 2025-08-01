@@ -6,11 +6,10 @@ use axum::{
 };
 
 use std::sync::Arc;
-// use validator::Validate; // //!optional, si necesitas validación de datos
 use crate::{
     errors::AppError,
     middleware::auth_middleware::AuthenticatedUser,
-    models::user_model::{LoginResponse, LoginUserSchema, RegisterUserSchema, UserData},
+    models::user_model::{LoginResponse, LoginUserSchema, RegisterUserSchema, UpdateUserSchema, UserData},
     services::auth_service::AuthService,
     state::AppState,
 };
@@ -41,10 +40,13 @@ impl IntoResponse for AuthHandlerError {
     }
 }
 
-// Conversión desde AppError para compatibilidad
 impl From<AppError> for AuthHandlerError {
     fn from(err: AppError) -> Self {
-        AuthHandlerError::ServiceError(err.to_string())
+        match err {
+            AppError::NotFound(_) => AuthHandlerError::NotFound,
+            AppError::ValidationError(msg) => AuthHandlerError::ValidationError(msg),
+            _ => AuthHandlerError::ServiceError(err.to_string()),
+        }
     }
 }
 
@@ -65,10 +67,22 @@ pub async fn login_handler(
     let login_response = auth_service.login_user(payload).await?;
     Ok(Json(login_response))
 }
-// Handler simplificado para pruebas
+
 #[debug_handler]
 pub async fn get_me_handler(
-    Extension(user): Extension<AuthenticatedUser>,
-) -> Json<AuthenticatedUser> {
-    Json(user)
+    Extension(authenticated_user): Extension<AuthenticatedUser>,
+) -> Json<UserData> {
+    Json(authenticated_user.0.into())
+}
+
+#[debug_handler]
+pub async fn update_me_handler(
+    State(app_state): State<Arc<AppState>>,
+    Extension(authenticated_user): Extension<AuthenticatedUser>,
+    Json(payload): Json<UpdateUserSchema>,
+) -> Result<Json<UserData>, AuthHandlerError> {
+    let auth_service = AuthService::new(app_state.db.clone(), app_state.config.clone());
+    let user_id = authenticated_user.0.id.as_ref().unwrap();
+    let updated_user = auth_service.update_user_details(user_id, payload).await?;
+    Ok(Json(updated_user))
 }

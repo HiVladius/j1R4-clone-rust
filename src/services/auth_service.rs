@@ -1,5 +1,5 @@
 use chrono::Utc;
-use mongodb::{Collection, bson::doc};
+use mongodb::{Collection, bson::{doc, oid::ObjectId}};
 use std::sync::Arc;
 use validator::Validate;
 
@@ -7,7 +7,7 @@ use crate::{
     config::Config,
     db::DatabaseState,
     errors::AppError,
-    models::user_model::{LoginResponse, LoginUserSchema, RegisterUserSchema, User, UserData},
+    models::user_model::{LoginResponse, LoginUserSchema, RegisterUserSchema, UpdateUserSchema, User, UserData, Role},
     utils::{jwt_utils::generate_jwt, password_utils},
 };
 
@@ -30,7 +30,6 @@ impl AuthService {
             .validate()
             .map_err(|e| AppError::ValidationError(e.to_string()))?;
 
-        // Verificar si ya existe un usuario con el mismo email o username
         let existing_user = self
             .user_collection()
             .find_one(doc! {
@@ -51,14 +50,14 @@ impl AuthService {
         let password_hash = password_utils::hash_password(&schema.password)?;
 
         let new_user = User {
-            id: None, // MongoDB generará automáticamente el _id
+            id: None,
             username: schema.username.clone(),
             email: schema.email.clone(),
             password_hash,
-            first_name: schema.first_name.clone(),
-            last_name: schema.last_name.clone(),
+            first_name: Some(schema.first_name.clone()),
+            last_name: Some(schema.last_name.clone()),
             bio: schema.bio.clone(),
-            role: schema.role.clone(),
+            role: Some(schema.role.unwrap_or(Role::Member)),
             avatar: schema.avatar.clone(),
             created_at: Utc::now(),
             updated_at: Utc::now(),
@@ -70,19 +69,9 @@ impl AuthService {
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
-        // Crear el usuario con el ID generado por MongoDB
         let created_user = User {
             id: insert_result.inserted_id.as_object_id(),
-            username: new_user.username,
-            email: new_user.email,
-            password_hash: new_user.password_hash,
-            first_name: schema.first_name,
-            last_name: schema.last_name,
-            bio: schema.bio,
-            role: schema.role,
-            avatar: schema.avatar,
-            created_at: new_user.created_at,
-            updated_at: new_user.updated_at,
+            ..new_user
         };
 
         Ok(created_user.into())
@@ -93,7 +82,6 @@ impl AuthService {
             .validate()
             .map_err(|e| AppError::ValidationError(e.to_string()))?;
 
-        //Buscar el usuario por correo
         let user = self
             .user_collection()
             .find_one(doc! { "email": &schema.email })
@@ -103,13 +91,12 @@ impl AuthService {
                 "Usuario no encontrado".to_string(),
             ))?;
 
-        // Verificar que el usuario tenga un hash de contraseña
         if user.password_hash.is_empty() {
             return Err(AppError::ValidationError(
                 "Usuario sin contraseña configurada".to_string(),
             ));
         }
-        // //!Verificar la contraseña y generar el token JWT
+
         if !password_utils::verify_password(&user.password_hash, &schema.password)? {
             return Err(AppError::ValidationError(
                 "Contraseña incorrecta".to_string(),
@@ -117,12 +104,53 @@ impl AuthService {
         }
 
         let user_id = user.id.ok_or_else(|| AppError::InternalServerError)?;
-
         let token = generate_jwt(&user_id, &self.config)?;
 
         Ok(LoginResponse {
             token,
             user: user.into(),
         })
+    }
+
+    pub async fn update_user_details(&self, user_id: &ObjectId, update_data: UpdateUserSchema) -> Result<UserData, AppError> {
+        let mut update_doc = doc! {};
+
+        if let Some(username) = update_data.username {
+            update_doc.insert("username", username);
+        }
+        if let Some(email) = update_data.email {
+            update_doc.insert("email", email);
+        }
+        if let Some(first_name) = update_data.first_name {
+            update_doc.insert("first_name", first_name);
+        }
+        if let Some(last_name) = update_data.last_name {
+            update_doc.insert("last_name", last_name);
+        }
+        if let Some(bio) = update_data.bio {
+            update_doc.insert("bio", bio);
+        }
+        if let Some(role) = update_data.role {
+            update_doc.insert("role", serde_json::to_string(&role).unwrap());
+        }
+        if let Some(avatar) = update_data.avatar {
+            update_doc.insert("avatar", avatar);
+        }
+
+        if !update_doc.is_empty() {
+            update_doc.insert("updated_at", chrono::Utc::now());
+            self.user_collection()
+                .update_one(doc! { "_id": user_id }, doc! { "$set": update_doc })
+                .await
+                .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+        }
+
+        let updated_user = self.user_collection()
+            .find_one(doc! { "_id": user_id })
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?
+            .ok_or(AppError::NotFound("Usuario no encontrado después de actualizar".to_string()))?;
+
+        Ok(updated_user.into())
     }
 }

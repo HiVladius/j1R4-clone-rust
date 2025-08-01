@@ -25,7 +25,7 @@ pub async fn create_comment_handler(
 
     let comment_service = CommentService::new(app_state.db.clone());
     let new_comment = comment_service
-        .create_comment(task_id, auth_user.id, payload)
+        .create_comment(task_id, auth_user.0.id.unwrap(), payload)
         .await?;
 
     Ok((StatusCode::CREATED, Json(new_comment)))
@@ -42,7 +42,7 @@ pub async fn get_comments_handler(
     let comment_service = CommentService::new(app_state.db.clone());
 
     let comments = comment_service
-        .get_comments_for_task(task_id, auth_user.id, None)
+        .get_comments_for_task(task_id, auth_user.0.id.unwrap(), None)
         .await?;
 
     Ok(Json(comments))
@@ -51,7 +51,7 @@ pub async fn get_comments_handler(
 pub async fn update_comment_handler(
     State(app_state): State<Arc<AppState>>,
     Extension(auth_user): Extension<AuthenticatedUser>,
-    Path((_task_id, comment_id)): Path<(String, String)>, // ← Aquí está el cambio
+    Path((_task_id, comment_id)): Path<(String, String)>,
     Json(payload): Json<UpdateCommentSchema>,
 ) -> Result<Json<CommentData>, AppError> {
     let comment_id = ObjectId::parse_str(&comment_id)
@@ -60,7 +60,7 @@ pub async fn update_comment_handler(
     let comment_service = CommentService::new(app_state.db.clone());
 
     let updated_comment = comment_service
-        .update_comment(comment_id, auth_user.id, payload)
+        .update_comment(comment_id, auth_user.0.id.unwrap(), payload)
         .await?;
 
     Ok(Json(updated_comment))
@@ -69,14 +69,14 @@ pub async fn update_comment_handler(
 pub async fn delete_comment_handler(
     State(app_state): State<Arc<AppState>>,
     Extension(auth_user): Extension<AuthenticatedUser>,
-    Path((_task_id, comment_id)): Path<(String, String)>, // ← Y aquí también
+    Path((_task_id, comment_id)): Path<(String, String)>,
 ) -> Result<StatusCode, AppError> {
     let comment_id = ObjectId::parse_str(&comment_id)
         .map_err(|_| AppError::ValidationError("ID de comentario inválido.".to_string()))?;
 
     let comment_service = CommentService::new(app_state.db.clone());
     comment_service
-        .delete_comment(comment_id, auth_user.id)
+        .delete_comment(comment_id, auth_user.0.id.unwrap())
         .await?;
 
     Ok(StatusCode::NO_CONTENT)

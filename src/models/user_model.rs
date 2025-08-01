@@ -1,7 +1,25 @@
 use chrono::{DateTime, Utc};
-use mongodb::bson::oid::ObjectId; // Solo importamos ObjectId
+use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum Role {
+    Admin,
+    ProjectManager,
+    Member,
+    Viewer,
+}
+
+impl Default for Role {
+    fn default() -> Self {
+        Role::Member
+    }
+}
+
+fn default_none_string() -> Option<String> {
+    None
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct User {
@@ -11,12 +29,14 @@ pub struct User {
     pub email: String,
     #[serde(skip_serializing_if = "String::is_empty", default)]
     pub password_hash: String,
-    pub first_name: String,
-    pub last_name: String,
+    #[serde(default = "default_none_string")]
+    pub first_name: Option<String>,
+    #[serde(default = "default_none_string")]
+    pub last_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bio: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub role: Option<String>,
+    pub role: Option<Role>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avatar: Option<String>,
     #[serde(with = "bson::serde_helpers::chrono_datetime_as_bson_datetime")]
@@ -36,7 +56,7 @@ pub struct RegisterUserSchema {
     pub first_name: String,
     pub last_name: String,
     pub bio: Option<String>,
-    pub role: Option<String>,
+    pub role: Option<Role>,
     pub avatar: Option<String>,
 }
 
@@ -44,10 +64,10 @@ pub struct RegisterUserSchema {
 pub struct UpdateUserSchema {
     pub username: Option<String>,
     pub email: Option<String>,
-    pub first_name: String,
-    pub last_name: String,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
     pub bio: Option<String>,
-    pub role: Option<String>,
+    pub role: Option<Role>,
     pub avatar: Option<String>,
 }
 
@@ -64,12 +84,11 @@ pub struct UserData {
     pub id: String,
     pub username: String,
     pub email: String,
-    pub first_name: String,
-    pub last_name: String,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
     pub bio: Option<String>,
-    pub role: Option<String>,
+    pub role: Option<Role>,
     pub avatar: Option<String>,
-
 }
 
 impl From<User> for UserData {

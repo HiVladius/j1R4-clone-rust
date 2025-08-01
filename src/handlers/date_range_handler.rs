@@ -32,7 +32,7 @@ pub async fn set_task_date_range_handler(
     let date_range_service = DateRangeService::new(app_state.db.clone());
 
     let date_range = date_range_service
-        .set_task_date_range(task_id, date_range_data, auth_user.id)
+        .set_task_date_range(task_id, date_range_data, auth_user.0.id.unwrap())
         .await?;
 
     Ok(Json(date_range))
@@ -50,7 +50,7 @@ pub async fn get_task_date_range_handler(
     let date_range_service = DateRangeService::new(app_state.db.clone());
 
     let date_range = date_range_service
-        .get_task_date_range(task_id, auth_user.id)
+        .get_task_date_range(task_id, auth_user.0.id.unwrap())
         .await?;
 
     Ok(Json(date_range))
@@ -68,7 +68,7 @@ pub async fn get_project_date_ranges_handler(
     let date_range_service = DateRangeService::new(app_state.db.clone());
 
     let date_ranges = date_range_service
-        .get_project_date_ranges(project_id, auth_user.id)
+        .get_project_date_ranges(project_id, auth_user.0.id.unwrap())
         .await?;
 
     Ok(Json(date_ranges))
@@ -86,7 +86,7 @@ pub async fn delete_task_date_range_handler(
     let date_range_service = DateRangeService::new(app_state.db.clone());
 
     date_range_service
-        .delete_task_date_range(task_id, auth_user.id)
+        .delete_task_date_range(task_id, auth_user.0.id.unwrap())
         .await?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -105,7 +105,7 @@ pub async fn update_task_date_range_handler(
     let date_range_service = DateRangeService::new(app_state.db.clone());
 
     let updated_date_range = date_range_service
-        .update_task_date_range(task_id, update_data, auth_user.id)
+        .update_task_date_range(task_id, update_data, auth_user.0.id.unwrap())
         .await?;
 
     Ok(Json(updated_date_range))

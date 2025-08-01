@@ -23,7 +23,7 @@ pub async fn create_project_handler(
 ) -> Result<(StatusCode, Json<Project>), AppError> {
     let project_service = ProjectService::new(app_state.db.clone());
     let new_project = project_service
-        .create_project(payload, auth_user.id)
+        .create_project(payload, auth_user.0.id.unwrap())
         .await?;
 
     Ok((StatusCode::CREATED, Json(new_project)))
@@ -34,7 +34,7 @@ pub async fn get_project_handler(
     Extension(auth_user): Extension<AuthenticatedUser>,
 ) -> Result<Json<Vec<ProjectWithRole>>, AppError> {
     let project_service = ProjectService::new(app_state.db.clone());
-    let projects = project_service.get_projects_with_role_for_user(auth_user.id).await?;
+    let projects = project_service.get_projects_with_role_for_user(auth_user.0.id.unwrap()).await?;
 
     Ok(Json(projects))
 }
@@ -50,7 +50,7 @@ pub async fn update_project_handler(
 
     let project_service = ProjectService::new(app_state.db.clone());
     let update_project = project_service
-        .update_project(project_id, auth_user.id, payload)
+        .update_project(project_id, auth_user.0.id.unwrap(), payload)
         .await?;
 
     Ok(Json(update_project))
@@ -66,7 +66,7 @@ pub async fn delete_project_handler(
 
     let project_service = ProjectService::new(app_state.db.clone());
     project_service
-        .delete_project(project_id, auth_user.id)
+        .delete_project(project_id, auth_user.0.id.unwrap())
         .await?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -83,7 +83,7 @@ pub async fn add_member_handler(
 
     let project_service = ProjectService::new(app_state.db.clone());
     project_service
-        .add_member(project_id, auth_user.id, payload)
+        .add_member(project_id, auth_user.0.id.unwrap(), payload)
         .await?;
 
     Ok(StatusCode::OK)
@@ -99,7 +99,7 @@ pub async fn list_members_handler(
 
     let project_service = ProjectService::new(app_state.db.clone());
     let members = project_service
-        .list_members(project_id, auth_user.id)
+        .list_members(project_id, auth_user.0.id.unwrap())
         .await?;
 
     Ok(Json(members))
@@ -117,7 +117,7 @@ pub async fn remove_member_handler(
 
     let project_service = ProjectService::new(app_state.db.clone());
     project_service
-        .remove_member(project_id, auth_user.id, user_id)
+        .remove_member(project_id, auth_user.0.id.unwrap(), user_id)
         .await?;
 
     Ok(StatusCode::NO_CONTENT)

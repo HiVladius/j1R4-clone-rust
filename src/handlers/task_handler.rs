@@ -34,7 +34,7 @@ pub async fn create_task_handler(
     let task_service = TaskService::new(app_state.db.clone(), app_state.ws_tx.clone());
 
     let new_task = task_service
-        .create_task(task_data, project_id, auth_user.id)
+        .create_task(task_data, project_id, auth_user.0.id.unwrap())
         .await?;
 
     Ok((StatusCode::CREATED, Json(new_task)))
@@ -50,7 +50,7 @@ pub async fn get_task_for_project_handler(
 
     let task_service = TaskService::new(app_state.db.clone(), app_state.ws_tx.clone());
     let tasks = task_service
-        .get_task_for_project(project_id, auth_user.id)
+        .get_task_for_project(project_id, auth_user.0.id.unwrap())
         .await?;
 
     Ok(Json(tasks))
@@ -65,7 +65,7 @@ pub async fn get_task_by_id_handler(
         .map_err(|_| AppError::ValidationError("ID de tarea invalido".to_string()))?;
 
     let task_service = TaskService::new(app_state.db.clone(), app_state.ws_tx.clone());
-    let task = task_service.get_task_by_id(task_id, auth_user.id).await?;
+    let task = task_service.get_task_by_id(task_id, auth_user.0.id.unwrap()).await?;
 
     Ok(Json(task))
 }
@@ -81,7 +81,7 @@ pub async fn update_task_handler(
 
     let task_service = TaskService::new(app_state.db.clone(), app_state.ws_tx.clone());
     let update_task = task_service
-        .update_task(task_id, auth_user.id, payload)
+        .update_task(task_id, auth_user.0.id.unwrap(), payload)
         .await?;
 
     Ok(Json(update_task))
@@ -96,7 +96,7 @@ pub async fn delete_task_handler(
         .map_err(|_| AppError::ValidationError("ID de tarea invalido".to_string()))?;
 
     let task_service = TaskService::new(app_state.db.clone(), app_state.ws_tx.clone());
-    task_service.delete_task(task_id, auth_user.id).await?;
+    task_service.delete_task(task_id, auth_user.0.id.unwrap()).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -112,9 +112,9 @@ pub async fn get_task_with_date_range_handler(
     let task_service = TaskService::new(app_state.db.clone(), app_state.ws_tx.clone());
     let date_range_service = DateRangeService::new(app_state.db.clone());
 
-    let task = task_service.get_task_by_id(task_id, auth_user.id).await?;
+    let task = task_service.get_task_by_id(task_id, auth_user.0.id.unwrap()).await?;
     let date_range = date_range_service
-        .get_task_date_range(task_id, auth_user.id)
+        .get_task_date_range(task_id, auth_user.0.id.unwrap())
         .await?;
 
     Ok(Json(TaskWithDateRange { task, date_range }))

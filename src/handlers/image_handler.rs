@@ -25,7 +25,6 @@ pub async fn upload_image_handler(
 ) -> Result<(StatusCode, Json<ImageResponse>), AppError> {
     let image_service = ImageService::new(app_state.db.clone(), app_state.config.clone()).await?;
 
-    // Parsear project_id y task_id opcionales
     let project_id = if let Some(pid) = query_params.project_id {
         Some(ObjectId::parse_str(&pid)
             .map_err(|_| AppError::ValidationError("ID de proyecto inválido".to_string()))?)
@@ -40,7 +39,6 @@ pub async fn upload_image_handler(
         None
     };
 
-    // Procesar el archivo del multipart
     let mut file_data: Option<Vec<u8>> = None;
     let mut filename: Option<String> = None;
     let mut content_type: Option<String> = None;
@@ -61,7 +59,6 @@ pub async fn upload_image_handler(
         }
     }
 
-    // Validar que se recibió un archivo
     let file_data = file_data.ok_or_else(|| 
         AppError::ValidationError("No se encontró archivo en la petición".to_string()))?;
     
@@ -71,12 +68,10 @@ pub async fn upload_image_handler(
     let content_type = content_type.unwrap_or_else(|| 
         mime_guess::from_path(&filename).first_or_octet_stream().to_string());
 
-    // Validar tamaño del archivo (máximo 10MB)
     if file_data.len() > 10 * 1024 * 1024 {
         return Err(AppError::ValidationError("El archivo es demasiado grande (máximo 10MB)".to_string()));
     }
 
-    // Validar tipo de archivo (solo imágenes)
     if !content_type.starts_with("image/") {
         return Err(AppError::ValidationError("Solo se permiten archivos de imagen".to_string()));
     }
@@ -86,7 +81,7 @@ pub async fn upload_image_handler(
             file_data, 
             filename, 
             content_type, 
-            auth_user.id, 
+            auth_user.0.id.unwrap(), 
             project_id, 
             task_id, 
             query_params.custom_name,
@@ -123,13 +118,10 @@ pub async fn download_image_handler(
     let image_oid = ObjectId::parse_str(&image_id)
         .map_err(|_| AppError::ValidationError("ID de imagen inválido".to_string()))?;
 
-    // Obtener información de la imagen
     let image_info = image_service.get_image(image_oid).await?;
     
-    // Obtener los datos del archivo
     let file_data = image_service.get_image_data(image_oid).await?;
 
-    // Crear headers para la respuesta
     let mut headers = HeaderMap::new();
     headers.insert(
         axum::http::header::CONTENT_TYPE,
@@ -164,7 +156,7 @@ pub async fn update_image_handler(
         .map_err(|_| AppError::ValidationError("ID de imagen inválido".to_string()))?;
 
     let updated_image = image_service
-        .update_image(image_oid, payload, auth_user.id)
+        .update_image(image_oid, payload, auth_user.0.id.unwrap())
         .await?;
 
     Ok(Json(updated_image))
@@ -181,7 +173,7 @@ pub async fn delete_image_handler(
     let image_oid = ObjectId::parse_str(&image_id)
         .map_err(|_| AppError::ValidationError("ID de imagen inválido".to_string()))?;
 
-    image_service.delete_image(image_oid, auth_user.id).await?;
+    image_service.delete_image(image_oid, auth_user.0.id.unwrap()).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -223,6 +215,6 @@ pub async fn list_user_images_handler(
 ) -> Result<Json<Vec<ImageResponse>>, AppError> {
     let image_service = ImageService::new(app_state.db.clone(), app_state.config.clone()).await?;
 
-    let images = image_service.list_user_images(auth_user.id).await?;
+    let images = image_service.list_user_images(auth_user.0.id.unwrap()).await?;
     Ok(Json(images))
 }

@@ -1,6 +1,6 @@
 use crate::{
     handlers::{
-        auth_handler::{get_me_handler, login_handler, register_handler},
+        auth_handler::{get_me_handler, login_handler, register_handler, update_me_handler},
         comment_handler::{
             create_comment_handler, delete_comment_handler, get_comments_handler,
             update_comment_handler,
@@ -31,7 +31,7 @@ use crate::{
 };
 use axum::{
     Router, middleware,
-    routing::{delete, get, patch, post},
+    routing::{delete, get, patch, post, put},
 };
 use std::sync::Arc;
 
@@ -41,7 +41,6 @@ use tower_http::cors::CorsLayer;
 pub fn get_app(app_state: Arc<AppState>) -> Router {
     let auth_middleware = middleware::from_fn_with_state(app_state.clone(), auth_guard);
 
-    // Configuración CORS más específica y segura
     let cors = CorsLayer::new()
         .allow_origin(
             app_state
@@ -68,6 +67,7 @@ pub fn get_app(app_state: Arc<AppState>) -> Router {
 
     let protected_routes = Router::new()
         .route("/me", get(get_me_handler))
+        .route("/me", put(update_me_handler))
         .route("/projects", post(create_project_handler))
         .route("/projects", get(get_project_handler))
         .route("/projects/{project_id}", patch(update_project_handler))
@@ -100,7 +100,6 @@ pub fn get_app(app_state: Arc<AppState>) -> Router {
             "/tasks/{task_id}/comments/{comment_id}",
             delete(delete_comment_handler),
         )
-        // Endpoints para rangos de fechas
         .route(
             "/tasks/{task_id}/date-range",
             post(set_task_date_range_handler),
@@ -121,7 +120,6 @@ pub fn get_app(app_state: Arc<AppState>) -> Router {
             "/projects/{project_id}/date-ranges",
             get(get_project_date_ranges_handler),
         )
-        // Endpoints para imágenes
         .route("/images", post(upload_image_handler))
         .route("/images", get(list_user_images_handler))
         .route("/images/{image_id}", get(get_image_info_handler))
