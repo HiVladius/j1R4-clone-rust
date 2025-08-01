@@ -55,6 +55,11 @@ impl AuthService {
             username: schema.username.clone(),
             email: schema.email.clone(),
             password_hash,
+            first_name: schema.first_name.clone(),
+            last_name: schema.last_name.clone(),
+            bio: schema.bio.clone(),
+            role: schema.role.clone(),
+            avatar: schema.avatar.clone(),
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -71,6 +76,11 @@ impl AuthService {
             username: new_user.username,
             email: new_user.email,
             password_hash: new_user.password_hash,
+            first_name: schema.first_name,
+            last_name: schema.last_name,
+            bio: schema.bio,
+            role: schema.role,
+            avatar: schema.avatar,
             created_at: new_user.created_at,
             updated_at: new_user.updated_at,
         };

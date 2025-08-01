@@ -11,6 +11,14 @@ pub struct User {
     pub email: String,
     #[serde(skip_serializing_if = "String::is_empty", default)]
     pub password_hash: String,
+    pub first_name: String,
+    pub last_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bio: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub role: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avatar: Option<String>,
     #[serde(with = "bson::serde_helpers::chrono_datetime_as_bson_datetime")]
     pub created_at: DateTime<Utc>,
     #[serde(with = "bson::serde_helpers::chrono_datetime_as_bson_datetime")]
@@ -19,16 +27,30 @@ pub struct User {
 
 #[derive(Deserialize, Validate, Debug)]
 pub struct RegisterUserSchema {
-    #[validate(length(
-        min = 5,
-        message = "El nombre de usuario debe tener al menos 5 caracteres."
-    ))]
+    #[validate(length(min = 5,message = "El nombre de usuario debe tener al menos 5 caracteres."))]
     pub username: String,
     #[validate(email(message = "El correo electrónico no es válido."))]
     pub email: String,
     #[validate(length(min = 8, message = "La contraseña debe tener al menos 8 caracteres."))]
     pub password: String,
+    pub first_name: String,
+    pub last_name: String,
+    pub bio: Option<String>,
+    pub role: Option<String>,
+    pub avatar: Option<String>,
 }
+
+#[derive(Deserialize, Validate, Debug, Default)]
+pub struct UpdateUserSchema {
+    pub username: Option<String>,
+    pub email: Option<String>,
+    pub first_name: String,
+    pub last_name: String,
+    pub bio: Option<String>,
+    pub role: Option<String>,
+    pub avatar: Option<String>,
+}
+
 
 #[derive(Deserialize, Validate, Debug)]
 pub struct LoginUserSchema {
@@ -42,6 +64,12 @@ pub struct UserData {
     pub id: String,
     pub username: String,
     pub email: String,
+    pub first_name: String,
+    pub last_name: String,
+    pub bio: Option<String>,
+    pub role: Option<String>,
+    pub avatar: Option<String>,
+
 }
 
 impl From<User> for UserData {
@@ -50,6 +78,11 @@ impl From<User> for UserData {
             id: user.id.map_or_else(String::new, |oid| oid.to_hex()),
             username: user.username,
             email: user.email,
+            first_name: user.first_name,
+            last_name: user.last_name,
+            bio: user.bio,
+            role: user.role,
+            avatar: user.avatar,
         }
     }
 }

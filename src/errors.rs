@@ -41,6 +41,9 @@ pub enum AppError {
 
     #[error("Error de JWT: {0}")]
     JwtError(#[from] jsonwebtoken::errors::Error),
+
+    #[error("Error al cambiar nombre de usuario: {0}")]
+    DataUser(String),
 }
 
 // Cómo Axum convierte AppError en una respuesta HTTP
@@ -89,7 +92,9 @@ impl IntoResponse for AppError {
                     StatusCode::UNAUTHORIZED,
                     "Token inválido o expirado".to_string(),
                 )
-            }
+            },
+            AppError::DataUser(msg) => (StatusCode::BAD_REQUEST, msg),
+            
         };
 
         let body = Json(json!({
