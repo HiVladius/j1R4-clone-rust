@@ -6,6 +6,9 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  APP_URL: https://jiraclone-1gg2.shuttle.app
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -26,7 +29,62 @@ jobs:
           SHUTTLE_API_KEY: ${{ secrets.SHUTTLE_API_KEY }}
       
       - name: Deploy to Shuttle
+        id: deploy
         uses: shuttle-hq/deploy-action@v2
         with:
           shuttle-api-key: ${{ secrets.SHUTTLE_API_KEY }}
           project-id: proj_01K00FRHSZTGKJZGB4YQECRGFX
+          secrets: |
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            DATABASE_NAME=${{ secrets.DATABASE_NAME }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            SERVER_ADDRESS=0.0.0.0:8000
+            CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}
+      
+      - name: Wait for deployment to be ready
+        run: |
+          echo "🕐 Waiting for deployment to be ready..."
+          sleep 30  # Dar tiempo para que el servicio se inicie
+      
+      - name: Health Check
+        run: |
+          echo "🏥 Performing health check on $APP_URL"
+          max_attempts=10
+          attempt=1
+          
+          while [ $attempt -le $max_attempts ]; do
+            echo "Attempt $attempt/$max_attempts..."
+            
+            if curl -f -s -o /dev/null -w "%{http_code}" "$APP_URL" | grep -q "200\|404"; then
+              echo "✅ Application is responding!"
+              curl -I "$APP_URL" || true
+              break
+            else
+              echo "❌ Application not responding yet (attempt $attempt/$max_attempts)"
+              if [ $attempt -eq $max_attempts ]; then
+                echo "💥 Health check failed after $max_attempts attempts"
+                exit 1
+              fi
+              sleep 15
+            fi
+            
+            attempt=$((attempt + 1))
+          done
+      
+      - name: Deployment Success Notification
+        if: success()
+        run: |
+          echo "🎉 Deployment successful!"
+          echo "📍 Application URL: $APP_URL"
+          echo "🚀 Commit: ${{ github.sha }}"
+          echo "👤 Deployed by: ${{ github.actor }}"
+          echo "🌿 Branch: ${{ github.ref_name }}"
+      
+      - name: Deployment Failure Notification
+        if: failure()
+        run: |
+          echo "💥 Deployment failed!"
+          echo "❌ Please check the logs above for details"
+          echo "🔍 Commit: ${{ github.sha }}"
+          echo "👤 Attempted by: ${{ github.actor }}"
+          echo "🌿 Branch: ${{ github.ref_name }}"
